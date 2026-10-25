@@ -101,19 +101,16 @@ See [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) for table definitions, relationship
 - “Create five quiz questions from Chapter 2.”
 - “Does this book explain concept X? If so, show me where.”
 
-## Project milestones
+## Implementation phases
 
-The implementation is planned in four phases:
+Build the project in this order:
 
-| Phase | Goal |
-| --- | --- |
-| 1. Foundation | Secure sign-in, private book upload, and document library |
-| 2. Ingestion and retrieval | Extract page-aware text, create embeddings, and search passages |
-| 3. Grounded answers | Chat with citations, source excerpts, and insufficient-evidence handling |
-| 4. Production readiness | Reliability, security review, evaluation, and deployment |
+1. **Secure foundation:** app scaffold, sign-in, database migrations, private PDF upload, and ownership policies.
+2. **Ingestion and retrieval:** page-aware PDF extraction, chunking, embeddings, and user-filtered vector search.
+3. **Grounded Q&A:** chat, source-verified citations, conversation history, and insufficient-evidence responses.
+4. **Production and deployment:** background processing, retries, security review, quality evaluation, monitoring, and deployment.
 
-See [ROADMAP.md](ROADMAP.md) for deliverables and completion criteria for each phase.
-
+See [ROADMAP.md](ROADMAP.md) for the implementation tasks and completion criteria for each phase.
 ## Project status
 
 **Planning / initial build.** The repository should be updated as implementation decisions are made. Document any working features, setup commands, environment variables, screenshots, and deployment details here rather than claiming planned features are already complete.
