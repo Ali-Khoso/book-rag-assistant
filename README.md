@@ -101,6 +101,19 @@ See [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) for table definitions, relationship
 - “Create five quiz questions from Chapter 2.”
 - “Does this book explain concept X? If so, show me where.”
 
+## Project milestones
+
+The implementation is planned in four phases:
+
+| Phase | Goal |
+| --- | --- |
+| 1. Foundation | Secure sign-in, private book upload, and document library |
+| 2. Ingestion and retrieval | Extract page-aware text, create embeddings, and search passages |
+| 3. Grounded answers | Chat with citations, source excerpts, and insufficient-evidence handling |
+| 4. Production readiness | Reliability, security review, evaluation, and deployment |
+
+See [ROADMAP.md](ROADMAP.md) for deliverables and completion criteria for each phase.
+
 ## Project status
 
 **Planning / initial build.** The repository should be updated as implementation decisions are made. Document any working features, setup commands, environment variables, screenshots, and deployment details here rather than claiming planned features are already complete.
