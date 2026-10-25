@@ -1,68 +1,60 @@
-# Project Roadmap
+# Four-Phase Implementation Plan
 
-This roadmap breaks the Book-Based RAG Assistant into four build phases. Complete and review each phase before expanding scope. These are planned milestones, not a claim that the features are already implemented.
+This document turns the project design into a build sequence. The plan assumes a Next.js frontend, a Python FastAPI backend, and Supabase for authentication, PostgreSQL with pgvector, and private file storage. It starts with text-based PDFs and one selected book per question. These are planned steps, not completed features.
 
-## Phase 1 — Foundation and secure book library
+## Phase 1 — Build the secure application foundation
 
-**Goal:** Create the application foundation and let a user safely manage uploaded books.
+**Goal:** A signed-in user can upload and manage their own book.
 
-**Deliverables**
+1. Create the frontend and backend folders and add local run instructions.
+2. Add an environment example file for database, storage, embedding, and language-model settings. Keep real secrets out of Git.
+3. Create the first database migration from DATABASE_SCHEMA.md: users, documents, chunks, conversations, messages, and message_citations.
+4. Enable the pgvector extension and add database ownership policies for user-owned records.
+5. Create a private storage bucket and policies that restrict each file to its owner.
+6. Implement sign-in, upload, document listing, status display, and delete actions.
 
-- Set up the Next.js frontend, Python API, and Supabase project.
-- Add environment configuration and an example environment file without real secrets.
-- Create database migrations for the six tables in [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md).
-- Enable Row Level Security and ownership checks.
-- Create a private book storage bucket.
-- Add sign-in, PDF upload, document listing, status display, and deletion.
+**Done when:** A user can sign in, upload a text-based PDF, see its queued document record, and only access or delete their own books.
 
-**Complete when:** A signed-in user can upload a PDF, see it in their library with a queued status, and cannot access another user's records.
+## Phase 2 — Process books and retrieve passages
 
-## Phase 2 — PDF ingestion and retrieval
+**Goal:** Turn an uploaded PDF into searchable passages that retain their source pages.
 
-**Goal:** Turn an uploaded book into searchable, page-aware passages.
+1. Add a PDF text extractor that reads text page by page and detects empty or unsupported files.
+2. Split extracted text into chunks with a small overlap; save document ID, user ID, page range, and chunk order with every chunk.
+3. Connect an embedding provider through a backend service and store each embedding with its chunk.
+4. Implement semantic search in PostgreSQL with pgvector, filtering by owner and selected document.
+5. Update document status through processing, ready, or failed and provide a safe retry for eligible failures.
+6. Create a small set of questions with known source pages and inspect the top retrieved passages.
 
-**Deliverables**
+**Done when:** For the reviewed questions, retrieval returns the supporting passage with the correct book and page metadata, and users cannot retrieve another user's chunks.
 
-- Extract selectable PDF text while preserving page numbers.
-- Split extracted text into chunks and keep document, page, and chunk-order metadata.
-- Generate embeddings and save them with the chunks.
-- Implement vector search filtered to the user's selected books.
-- Update document status through processing, ready, or failed.
-- Prepare a small set of questions with known supporting passages for retrieval checks.
+## Phase 3 — Add grounded question answering
 
-**Complete when:** Search returns the expected book passages and page metadata for the reviewed questions.
+**Goal:** Answer questions from retrieved book passages and let users verify the answer.
 
-## Phase 3 — Grounded answers and user experience
+1. Add a chat page where the user selects a book and asks a question.
+2. Build the answer endpoint: retrieve passages, construct a grounded prompt, call the language model, and return the response.
+3. Require the model to refer to retrieved chunk IDs; build page citations from stored metadata rather than trusting model-generated page numbers.
+4. Return a clear insufficient-evidence answer when retrieval does not find useful support.
+5. Save questions and answers in messages and link each answer to its evidence through message_citations.
+6. Add source excerpts, loading states, and useful upload or answer error messages.
 
-**Goal:** Let users ask questions and verify answers against the book.
+**Done when:** A demo question receives an answer with a citation that supports it, and an out-of-book question receives an honest insufficient-evidence response.
 
-**Deliverables**
+## Phase 4 — Harden and deploy the application
 
-- Add a chat interface for asking about one selected book.
-- Retrieve relevant chunks and provide them to the language model as evidence.
-- Build citations from stored chunk metadata and show supporting excerpts.
-- Return an insufficient-evidence response when the book does not support an answer.
-- Save conversation messages and their citation links.
-- Show useful loading and error states.
+**Goal:** Make the complete upload-to-cited-answer flow reliable enough to use online.
 
-**Complete when:** A demo shows a supported answer with a correct page citation and an unsupported question that receives a clear abstention.
+1. Move longer PDF processing into an asynchronous worker or job service; make jobs idempotent and add bounded retries.
+2. Add file size and page limits, request rate limits, and per-user usage controls.
+3. Review authentication, database ownership policies, private file access, and deletion of files, chunks, embeddings, and citation links.
+4. Maintain an evaluation set for retrieval quality, answer groundedness, citation correctness, and abstention; rerun it after prompt or search changes.
+5. Monitor processing failures, response latency, and model usage while avoiding unnecessary logs of book contents.
+6. Deploy the frontend, backend, database, storage, and worker with separate development and production secrets.
+7. Update setup instructions and screenshots to show only features that are actually working.
 
-## Phase 4 — Production readiness and deployment
+**Done when:** The deployed app passes the access-control and answer-quality checks and can process a book and return verifiable answers reliably.
 
-**Goal:** Make the MVP safer, more reliable, and available online.
+## Keep out of the first MVP
 
-**Deliverables**
-
-- Move longer document processing to an asynchronous worker or job service.
-- Add idempotent processing, bounded retries, upload limits, rate limits, and per-user quotas.
-- Review database and storage access policies; verify deletion removes files, chunks, and citation links.
-- Monitor ingestion failures, answer latency, and model usage without logging sensitive book contents unnecessarily.
-- Use a reviewed evaluation set to check retrieval, groundedness, citation correctness, and abstention.
-- Deploy the frontend, API, database, storage, and worker with separate development and production secrets.
-- Update the README with setup instructions, screenshots, and the features that are actually working.
-
-**Complete when:** The deployed app passes the documented access-control and evaluation checks, and users can upload a book and receive verifiable answers reliably.
-
-## Scope after the four phases
-
-Add OCR for scanned PDFs, multi-book search, summaries, quizzes, and flashcards after the core upload-to-cited-answer flow is reliable. Do not fine-tune a model on each book; RAG supplies retrieved book passages at question time.
+Add OCR for scanned PDFs, multi-book search, summaries, quizzes, and flashcards after the core flow is reliable. RAG indexes books and supplies relevant passages at question time; it does not fine-tune a model for each upload.
