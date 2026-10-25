@@ -74,3 +74,7 @@ One practical implementation is a Next.js interface, a Python API for ingestion 
 ## Project status
 
 **Planning / initial build.** The repository should be updated as implementation decisions are made. Document any working features, setup commands, environment variables, screenshots, and deployment details here rather than claiming planned features are already complete.
+
+## Learning resource
+
+See [`RAG_CONCEPTS_AND_INTERVIEW_QUESTIONS.md`](RAG_CONCEPTS_AND_INTERVIEW_QUESTIONS.md) for plain-language explanations of key RAG concepts and interview questions with sample answers.
