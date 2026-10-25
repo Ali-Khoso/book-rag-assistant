@@ -64,15 +64,18 @@ Ingestion should be idempotent, so retrying a job does not create duplicate chun
 
 ## 6. Data model
 
-| Entity | Important fields | Purpose |
-| --- | --- | --- |
-| User | `id`, authentication subject, timestamps | Identifies the owner. |
-| Document | `id`, `user_id`, filename, storage key, status, page count, timestamps | Tracks an upload, its owner, and processing state. |
-| Chunk | `id`, `document_id`, `user_id`, text, embedding, page start/end, chunk index | Stores searchable text and citation metadata. |
-| Conversation | `id`, `user_id`, title, timestamps | Groups questions for a user. |
-| Message | `id`, `conversation_id`, role, content, citation chunk IDs, timestamps | Stores a question or answer with source references. |
+The logical schema has six tables: users, documents, chunks, conversations, messages, and message citations. The citation junction table connects each answer to the retrieved chunks that support it. See [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) for the full table design, constraints, indexes, and deletion behavior.
 
-Use foreign keys and database row-level security or equivalent server-side authorization. A vector match must never bypass the ownership check.
+| Entity | Main relationship |
+| --- | --- |
+| users | Owns documents and conversations. |
+| documents | Belongs to a user and contains page-aware chunks. |
+| chunks | Belongs to a document and stores text, embedding, and page range. |
+| conversations | Belongs to a user and contains messages. |
+| messages | Belongs to a conversation and stores a user question or assistant answer. |
+| message_citations | Joins messages to cited chunks using a composite primary key. |
+
+The vector dimension must match the selected embedding model. Enforce ownership in API queries and database policies; a vector search must never bypass the ownership check.
 
 ## 7. Candidate API routes
 

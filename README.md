@@ -2,6 +2,8 @@
 
 An AI study assistant that answers questions from books and learning documents. Upload a book, ask a question in natural language, and receive an answer grounded in retrieved passages with page citations so the reader can verify it.
 
+![Book RAG Assistant project overview](assets/images/book-rag-project-overview.png)
+
 ## Problem
 
 Readers often need a clear explanation or a specific fact from a long book. Searching manually takes time, while a general-purpose chatbot may answer from outside knowledge or invent details. This project aims to make book question answering useful and verifiable.
@@ -71,6 +73,14 @@ flowchart LR
 ```
 
 See [HIGH_LEVEL_DESIGN.md](HIGH_LEVEL_DESIGN.md) for ingestion and question workflows, data model, proposed API routes, security, reliability, deployment, and evaluation. This is the planned design; update it as implementation decisions are made.
+
+## Database schema
+
+The proposed schema stores users, books, page-aware chunks, conversations, messages, and the source links connecting answers to retrieved passages.
+
+![Proposed database schema](assets/images/database-schema.png)
+
+See [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md) for table definitions, relationships, data rules, indexes, and ownership controls.
 
 ## Reliability and privacy goals
 
