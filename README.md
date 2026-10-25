@@ -52,6 +52,26 @@ Web application
 
 One practical implementation is a Next.js interface, a Python API for ingestion and retrieval, and PostgreSQL with `pgvector` for document chunks and embeddings. The model and embedding provider should be configured through environment variables so they can be changed without changing the product flow.
 
+## High-level design
+
+The proposed system separates the web app, API, asynchronous document processing, private file storage, and retrieval services. Uploaded books are processed in a background worker. Questions retrieve page-aware passages, and the API validates citations before returning answers.
+
+```mermaid
+flowchart LR
+    User["User"] --> Web["Web app"]
+    Web --> API["API and authentication"]
+    API --> Storage["Private file storage"]
+    API --> Queue["Ingestion queue"]
+    Queue --> Worker["Document worker"]
+    Worker --> DB["PostgreSQL and pgvector"]
+    API --> DB
+    API --> Models["Embedding and language models"]
+    Models --> API
+    API --> Web
+```
+
+See [HIGH_LEVEL_DESIGN.md](HIGH_LEVEL_DESIGN.md) for ingestion and question workflows, data model, proposed API routes, security, reliability, deployment, and evaluation. This is the planned design; update it as implementation decisions are made.
+
 ## Reliability and privacy goals
 
 - Keep each user's documents and conversations isolated.
