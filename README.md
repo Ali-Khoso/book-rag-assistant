@@ -111,9 +111,16 @@ Build the project in this order:
 4. **Production and deployment:** background processing, retries, security review, quality evaluation, monitoring, and deployment.
 
 See [ROADMAP.md](ROADMAP.md) for the implementation tasks and completion criteria for each phase.
-## Project status
+## Phase 1 implementation
 
-**Planning / initial build.** The repository should be updated as implementation decisions are made. Document any working features, setup commands, environment variables, screenshots, and deployment details here rather than claiming planned features are already complete.
+Phase 1 provides the starter application foundation:
+
+- **Frontend:** Next.js App Router, React, and TypeScript. The landing page, sign-in/sign-up page, and protected library have distinct responsive layouts with glass surfaces, restrained motion, and reduced-motion support.
+- **Backend:** FastAPI with Pydantic response models. The API verifies Supabase access tokens, lists and deletes only the signed-in user's books, and accepts PDF uploads up to 6 MiB.
+- **Data and files:** Supabase Auth, PostgreSQL with Row Level Security, and a private PDF bucket. The browser uses only the publishable key; the secret key stays in the backend environment.
+- **Upload interaction:** drag-and-drop and file picker, server-side type/size/signature validation, visible progress, and cubic-bezier book animation.
+
+See [Phase 1 Setup](docs/PHASE_1_SETUP.md) for each Supabase and local setup step, and [Phase 1 Questions](docs/PHASE_1_QUESTIONS.md) for the technical and conceptual Q&A. Phase 1 stores uploaded PDFs; text extraction, indexing, and book Q&A arrive in later phases.
 
 ## Learning resource
 
