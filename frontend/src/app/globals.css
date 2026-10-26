@@ -135,6 +135,39 @@ button { cursor: pointer; }
 .library-footer { padding: 29px 2px 0; color: #a1a7b5; font-size: 9px; text-align: center; }
 .notice { margin: 12px 0; padding: 10px 12px; border-radius: 11px; font-size: 10px; line-height: 1.55; }.notice-error { background: #fff0f1; color: #a94050; }.notice-success { background: #eef8f3; color: #397b61; }
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; clip-path: inset(50%); }
+/* Phase 2: processing status, retry controls, and page-aware passage search. */
+.book-row { flex-wrap: wrap; }
+.book-actions { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.book-actions .button { min-height: 36px; padding: 0 10px; }
+.book-actions [aria-pressed="true"] { background: #efefff; color: #5b5dc0; }
+.book-row-info .book-progress { color: #5478af; line-height: 1.5; }
+.book-row-info .book-processing-error { max-width: 560px; color: #a94050; line-height: 1.6; white-space: normal; }
+.book-search { margin-top: 28px; padding: 28px; border-radius: 22px; }
+.search-heading { display: flex; justify-content: space-between; gap: 18px; align-items: start; }
+.search-heading h2 { margin: 0; font-size: 24px; letter-spacing: -.04em; }
+.search-book-name { margin: 8px 0 20px; color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.passage-search-form { display: flex; flex-direction: column; gap: 10px; }
+.passage-search-form > label { color: #4b556c; font-size: 12px; font-weight: 600; }
+.passage-search-form textarea { width: 100%; resize: vertical; min-height: 100px; max-height: 320px; padding: 13px; border: 1px solid #dce0ed; border-radius: 12px; color: var(--ink); background: rgba(255,255,255,.85); font: inherit; font-size: 13px; line-height: 1.7; }
+.passage-search-form textarea:focus-visible, .search-controls select:focus-visible { outline: 2px solid #8586de; outline-offset: 2px; }
+.search-controls { display: flex; justify-content: space-between; align-items: center; gap: 14px; }
+.search-controls label { color: var(--muted); font-size: 12px; }
+.search-controls select { margin-left: 8px; padding: 7px 10px; border: 1px solid #dce0ed; border-radius: 9px; background: #fff; color: var(--ink); }
+.search-controls .button { min-height: 42px; font-size: 12px; }
+.search-hint { color: var(--muted); font-size: 11px; line-height: 1.8; }
+.search-result-summary { margin: 24px 0 14px; color: #4b556c; font-size: 13px; overflow-wrap: anywhere; }
+.passage-results { display: grid; gap: 12px; }
+.passage-card { padding: 18px; border: 1px solid #e3e6f0; border-radius: 14px; background: rgba(255,255,255,.8); }
+.passage-card header { display: flex; justify-content: space-between; gap: 12px; color: var(--muted); font-size: 11px; }
+.passage-pages { color: #5b5dc0; font-weight: 600; }
+.passage-card p { margin: 14px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; color: #39445e; font-size: 13px; line-height: 1.9; }
+@media (max-width: 700px) {
+  .book-actions { width: 100%; justify-content: flex-end; }
+  .book-search { padding: 20px 16px; }
+  .search-controls { align-items: stretch; flex-direction: column; }
+  .search-controls .button { width: 100%; }
+  .book-row-info { flex-basis: calc(100% - 110px); }
+}
 .page-enter { animation: page-enter .75s var(--ease-out) both; }
 @keyframes page-enter { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
 @keyframes orb-drift { from { transform: translate3d(-4px,-8px,0) scale(.96); } to { transform: translate3d(12px,15px,0) scale(1.04); } }

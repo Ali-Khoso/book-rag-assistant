@@ -54,7 +54,7 @@ export function UploadBook({ onUploaded }: { onUploaded: () => void }) {
         request.send(form);
       });
 
-      setProgress(100); setState("done"); setMessage("Book uploaded · queued for processing"); onUploaded();
+      setProgress(100); setState("done"); setMessage("Book uploaded · see its progress below"); onUploaded();
     } catch (caught) {
       setState("error"); setMessage(caught instanceof Error ? caught.message : "Upload failed. Please try again.");
     }
