@@ -4,7 +4,8 @@ import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 
-const maxBytes = 6 * 1024 * 1024;
+const maxMiB = 50;
+const maxBytes = maxMiB * 1024 * 1024;
 type UploadState = "idle" | "uploading" | "done" | "error";
 
 export function UploadBook({ onUploaded }: { onUploaded: () => void }) {
@@ -12,12 +13,12 @@ export function UploadBook({ onUploaded }: { onUploaded: () => void }) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [state, setState] = useState<UploadState>("idle");
   const [progress, setProgress] = useState(0);
-  const [message, setMessage] = useState("PDF only · up to 6 MiB");
+  const [message, setMessage] = useState(`PDF only · up to ${maxMiB} MiB`);
   const [dragging, setDragging] = useState(false);
 
   function validate(file: File) {
     if (!file.name.toLowerCase().endsWith(".pdf") || file.type !== "application/pdf") throw new Error("Choose a PDF file.");
-    if (file.size > maxBytes) throw new Error("This PDF is larger than 6 MiB.");
+    if (file.size > maxBytes) throw new Error(`This PDF is larger than ${maxMiB} MiB.`);
     if (file.size === 0) throw new Error("This file is empty.");
   }
 

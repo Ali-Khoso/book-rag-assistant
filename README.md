@@ -116,7 +116,7 @@ See [ROADMAP.md](ROADMAP.md) for the implementation tasks and completion criteri
 Phase 1 provides the starter application foundation:
 
 - **Frontend:** Next.js App Router, React, and TypeScript. The landing page, sign-in/sign-up page, and protected library have distinct responsive layouts with glass surfaces, restrained motion, and reduced-motion support.
-- **Backend:** FastAPI with Pydantic response models. The API verifies Supabase access tokens, lists and deletes only the signed-in user's books, and accepts PDF uploads up to 6 MiB.
+- **Backend:** FastAPI with Pydantic response models. The API verifies Supabase access tokens, lists and deletes only the signed-in user's books, and accepts PDF uploads up to 50 MiB.
 - **Data and files:** Supabase Auth, PostgreSQL with Row Level Security, and a private PDF bucket. The browser uses only the publishable key; the secret key stays in the backend environment.
 - **Upload interaction:** drag-and-drop and file picker, server-side type/size/signature validation, visible progress, and cubic-bezier book animation.
 

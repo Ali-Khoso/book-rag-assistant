@@ -7,7 +7,7 @@ class Settings(BaseSettings):
     supabase_secret_key: str
     frontend_origin: str = "http://localhost:3000"
     books_bucket: str = "books-private"
-    max_pdf_size_bytes: int = 6 * 1024 * 1024
+    max_pdf_size_bytes: int = 50 * 1024 * 1024
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 

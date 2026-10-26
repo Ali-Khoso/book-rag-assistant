@@ -70,7 +70,8 @@ def upload_document(file: UploadFile = File(...), user: VerifiedUser = Depends(r
         file.file.close()
 
     if len(content) > settings.max_pdf_size_bytes:
-        raise HTTPException(status_code=413, detail="PDFs must be 6 MiB or smaller in Phase 1.")
+        max_mib = settings.max_pdf_size_bytes / (1024 * 1024)
+        raise HTTPException(status_code=413, detail=f"PDFs must be {max_mib:g} MiB or smaller.")
     if b"%PDF-" not in content[:1024]:
         raise HTTPException(status_code=415, detail="The file does not contain a valid PDF signature.")
 

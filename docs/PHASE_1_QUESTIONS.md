@@ -58,9 +58,9 @@ Books are user documents and should not have public URLs. The backend uploads to
 
 Each check catches a different class of mistake or spoofed request. The browser checks improve feedback, while FastAPI enforces the rule. The PDF signature check looks for `%PDF-` near the beginning of the file bytes.
 
-### 14. Why limit uploads to 6 MiB?
+### 14. Why limit uploads to 50 MiB?
 
-A clear Phase 1 limit reduces memory and storage use while the upload path is being built. It also fits Supabase's standard upload guidance; resumable uploads are appropriate for larger books. The limit is checked in the browser, enforced again by FastAPI, and configured on the Supabase bucket.
+The 50 MiB limit accommodates larger PDF books while bounding memory and storage use. The limit is checked in the browser, enforced again by FastAPI, and configured on the Supabase bucket. The project-wide Storage limit must also allow this size. Standard uploads support these files, but Supabase recommends resumable uploads above 6 MB for reliability; adding resumable uploads remains a later improvement.
 
 ### 15. Is CORS a security boundary?
 

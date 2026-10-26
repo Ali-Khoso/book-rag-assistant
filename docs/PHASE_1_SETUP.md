@@ -21,7 +21,7 @@ Phase 1 delivers a responsive frontend, secure sign-in, private PDF upload, and 
 5. The Storage bucket is private. The browser does not read or write Storage directly; FastAPI uses its server-only secret key.
 6. RLS is enabled. Authenticated browser reads are owner-scoped. Writes go through FastAPI.
 7. The browser checks PDF extension, content type, and size. The API repeats those checks and checks the PDF signature. Browser checks improve feedback; server checks enforce the rule.
-8. The API rejects files over 6 MiB and stores each file at a random ID under the verified user's folder. The first iteration uses a standard upload request; resumable uploads can raise the limit in a later hardening pass.
+8. The API rejects files over 50 MiB and stores each file at a random ID under the verified user's folder. The first iteration uses a standard upload request. Supabase recommends resumable uploads above 6 MB for reliability; resumable uploads remain a later improvement.
 9. CORS allows only the configured frontend origin. CORS is not authentication.
 10. Never commit `.env`, `.env.local`, or a secret key. The publishable key is designed for client use with RLS; the secret key is server-only.
 
@@ -46,8 +46,9 @@ FastAPI's Storage client uses a privileged key, which bypasses Storage RLS. Keep
 1. Open **SQL Editor → New query** in Supabase.
 2. Open `supabase/migrations/0001_phase1_schema.sql` in VS Code and copy the entire file.
 3. Paste it into the SQL Editor and select **Run**.
-4. Open **Storage** and confirm the `books-private` bucket exists and is private.
-5. The migration creates a profile row automatically after a user signs up through the app.
+4. Run `supabase/migrations/0002_increase_pdf_upload_limit.sql` to raise the bucket's PDF limit to 50 MiB. For an existing project with the first migration already applied, run only this new migration.
+5. Open **Storage** and confirm the `books-private` bucket exists, is private, and allows files up to 52,428,800 bytes (50 MiB). In **Storage Settings**, also ensure the global file size limit permits this size; a bucket limit cannot exceed the global limit.
+6. The first migration creates a profile row automatically after a user signs up through the app.
 
 The migration creates six logical tables and owner-scoped read policies. It creates no browser Storage policies because the browser uploads only through FastAPI.
 
@@ -85,7 +86,7 @@ SUPABASE_PUBLISHABLE_KEY=sb_publishable_YOUR_VALUE
 SUPABASE_SECRET_KEY=sb_secret_YOUR_VALUE
 FRONTEND_ORIGIN=http://localhost:3000
 BOOKS_BUCKET=books-private
-MAX_PDF_SIZE_BYTES=6291456
+MAX_PDF_SIZE_BYTES=52428800
 ```
 
 Keep `backend/.env` private. The root `.gitignore` excludes it.
@@ -129,11 +130,11 @@ Open `http://127.0.0.1:8000/api/health` to see the API status. Interactive API d
 1. Open `http://localhost:3000` and select **Open my library**.
 2. Create an account with an email address and password. Confirm the email if Supabase requires it.
 3. Sign in and open **My library**.
-4. Select a small PDF (6 MiB or less) and watch the upload progress animation.
+4. Select a PDF (50 MiB or less) and watch the upload progress animation. Include a book larger than 10 MB when verifying the increased limit.
 5. Confirm the book appears with status **Queued**.
 6. In Supabase, confirm the row belongs to your test user and the file is in the private bucket under that user's ID folder.
 7. Sign out. Visiting `/library` should redirect to `/login`.
-8. Try a non-PDF and a file larger than 6 MiB; both should be rejected. FastAPI is the enforcement point.
+8. Try a non-PDF and a file larger than 50 MiB; both should be rejected. FastAPI is the enforcement point.
 
 ## What Phase 1 does not do yet
 
