@@ -16,6 +16,8 @@ class DocumentResponse(BaseModel):
     processing_stage: str | None = None
     chunk_count: int = 0
     processed_at: str | None = None
+    title: str | None = None
+    author: str | None = None
 
 
 class SearchRequest(BaseModel):

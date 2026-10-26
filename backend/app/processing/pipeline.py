@@ -26,6 +26,7 @@ def process_document(job: dict, repository, embeddings, config: Settings) -> Non
         extracted = extract_pdf(content, max_pages=config.max_pdf_pages,
             max_chars=config.max_extracted_chars,
             progress=lambda page, total: progress(f"Reading pages {page}/{total}"))
+        repository.save_metadata(job, {"title": extracted.title, "author": extracted.author})
         del content
 
         # Text chunking: overlapping text retains book, owner, page, and position.

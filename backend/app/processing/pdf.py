@@ -9,6 +9,7 @@ from typing import Callable
 from pypdf import PdfReader
 
 from app.processing.errors import LostLease, ProcessingError
+from app.processing.metadata import metadata_from_reader
 
 
 @dataclass(frozen=True)
@@ -21,6 +22,8 @@ class PageText:
 class ExtractedPDF:
     pages: tuple[PageText, ...]
     page_count: int
+    title: str | None = None
+    author: str | None = None
 
 
 def extract_pdf(
@@ -64,7 +67,8 @@ def extract_pdf(
             if image_pages:
                 raise ProcessingError("This PDF appears to be scanned. Run OCR first, then upload the text-based PDF.")
             raise ProcessingError("This PDF has no extractable text. It may be empty or need OCR.")
-        return ExtractedPDF(tuple(pages), page_count)
+        metadata = metadata_from_reader(reader)
+        return ExtractedPDF(tuple(pages), page_count, **metadata)
     except (ProcessingError, LostLease):
         raise
     except Exception as exc:

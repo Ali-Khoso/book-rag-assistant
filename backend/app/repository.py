@@ -5,7 +5,7 @@ from uuid import uuid4
 from app.config import Settings
 
 
-DOCUMENT_FIELDS = "id,filename,status,page_count,created_at,processing_error,processing_stage,chunk_count,processed_at"
+DOCUMENT_FIELDS = "id,filename,status,page_count,created_at,processing_error,processing_stage,chunk_count,processed_at,title,author"
 
 
 class SupabaseRepository:
@@ -23,6 +23,21 @@ class SupabaseRepository:
         """Treat a missing book and another user's book identically."""
         result = self.client.table("documents").select("*").eq("id", document_id).eq("user_id", owner).maybe_single().execute()
         return result.data if result else None
+
+    def save_metadata(self, document: dict, metadata: dict) -> bool:
+        """Cache only PDF-provided metadata, respecting the current index generation."""
+        query = self.client.table("documents").update({"title": metadata.get("title"),
+            "author": metadata.get("author"), "metadata_checked": True})\
+            .eq("id", document["id"]).eq("user_id", document["user_id"])
+        if document.get("processing_run_id"):
+            query = query.eq("processing_run_id", document["processing_run_id"])
+        return bool(query.execute().data)
+
+    def opening_passages(self, document: dict, limit: int = 5) -> list[dict]:
+        """Title/author fallbacks inspect opening text instead of semantic guesswork."""
+        return self.client.table("chunks").select("id,document_id,content,page_start,page_end,chunk_index")\
+            .eq("document_id", document["id"]).eq("user_id", document["user_id"])\
+            .eq("processing_run_id", document["processing_run_id"]).order("chunk_index").limit(limit).execute().data or []
 
     def create_document(self, owner: str, filename: str, content: bytes) -> dict:
         """Store a private upload and its queued row; remove orphan files on failure."""
