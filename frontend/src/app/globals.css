@@ -102,6 +102,12 @@ button { cursor: pointer; }
 .auth-form { display: flex; flex-direction: column; }.auth-form label { margin: 14px 0 7px; color: #4b556c; font-size: 10px; font-weight: 700; }
 .auth-form input { width: 100%; height: 46px; padding: 0 13px; border: 1px solid rgba(54,68,101,.14); border-radius: 12px; outline: 0; background: rgba(255,255,255,.8); color: var(--ink); font-size: 12px; transition: border .2s, box-shadow .2s; }
 .auth-form input:focus { border-color: #8586de; box-shadow: 0 0 0 3px rgba(133,134,222,.14); }.auth-form input::placeholder { color: #aab0be; }
+.auth-password { position: relative; }
+.auth-password input { padding-right: 50px; }
+.auth-password input::-ms-reveal { display: none; }
+.auth-password-toggle { position: absolute; top: 50%; right: 5px; display: grid; width: 36px; height: 36px; place-items: center; padding: 0; border: 0; border-radius: 8px; background: transparent; color: #737a91; transform: translateY(-50%); }
+.auth-password-toggle:hover { background: #efefff; color: #5b5dc0; }
+.auth-password-toggle:focus-visible { outline: 2px solid #8586de; outline-offset: 1px; }
 .auth-submit { justify-content: space-between; width: 100%; min-height: 47px; margin-top: 22px; padding: 0 17px; border-radius: 12px; }
 .auth-switch { display: flex; justify-content: center; gap: 6px; margin-top: 19px; color: #858da1; font-size: 10px; }.auth-switch button { padding: 0; border: 0; background: none; color: #5b5dc0; font-size: inherit; font-weight: 700; }
 .auth-privacy { margin: 22px 0 0; color: #a0a6b5; font-size: 9px; line-height: 1.6; text-align: center; }.auth-back { position: relative; z-index: 1; width: fit-content; color: #858da1; font-size: 11px; }
