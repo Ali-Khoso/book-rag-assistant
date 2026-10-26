@@ -122,9 +122,22 @@ Phase 1 provides the starter application foundation:
 
 ![Bookwise private library showing a successfully uploaded PDF queued for processing](assets/images/phase-1-book-upload.png)
 
-Successful Phase 1 upload: the PDF appears in the private library with status **Queued**. Text extraction and indexing are planned for Phase 2.
+Successful Phase 1 upload: the PDF appears in the private library with status **Queued**. Phase 2 now processes queued books into a searchable index.
 
-See [Phase 1 Setup](docs/PHASE_1_SETUP.md) for each Supabase and local setup step, and [Phase 1 Questions](docs/PHASE_1_QUESTIONS.md) for the technical and conceptual Q&A. Phase 1 stores uploaded PDFs; text extraction, indexing, and book Q&A arrive in later phases.
+See [Phase 1 Setup](docs/PHASE_1_SETUP.md) for the initial Supabase and local setup steps, and [Phase 1 Questions](docs/PHASE_1_QUESTIONS.md) for the technical and conceptual Q&A.
+
+## Phase 2 implementation
+
+- **PDF text extraction:** page-aware extraction with clear failures for scanned, empty, encrypted, and damaged PDFs.
+- **Text chunking:** overlapping passages retain the source book, owner, position, and physical PDF page range.
+- **Embeddings:** a pinned local semantic model generates 256-dimensional vectors without a paid API key; a hosted provider can be configured privately in the backend.
+- **Vector storage and search:** Supabase pgvector retrieves ranked passages only from the signed-in user's selected book. The library shows source text and page ranges.
+- **Processing status and retry:** queued books process in the background, progress refreshes automatically, and failed or ready books can be retried or reprocessed safely.
+- **Retrieval testing:** offline tests and an opt-in live check cover reviewed questions, page provenance, reprocessing, and two-user access isolation.
+
+Apply the new migration and follow [Phase 2 Setup](docs/PHASE_2_SETUP.md). Existing queued books are processed automatically when the API starts. Phase 2 retrieves source passages; generated answers with citations arrive in Phase 3.
+
+See [Phase 2 Validation](docs/PHASE_2_VALIDATION.md) for the checked retrieval results, access-control checks, browser flow, and current limitations.
 
 ## Learning resource
 

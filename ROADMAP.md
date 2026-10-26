@@ -1,6 +1,6 @@
 # Four-Phase Implementation Plan
 
-This document turns the project design into a build sequence. The plan assumes a Next.js frontend, a Python FastAPI backend, and Supabase for authentication, PostgreSQL with pgvector, and private file storage. It starts with text-based PDFs and one selected book per question. These are planned steps, not completed features.
+This document turns the project design into a build sequence. The plan uses a Next.js frontend, a Python FastAPI backend, and Supabase for authentication, PostgreSQL with pgvector, and private file storage. It starts with text-based PDFs and one selected book per question. Each phase defines its completion criteria; implementation notes identify the features now available.
 
 ## Phase 1 — Build the secure application foundation
 
@@ -27,6 +27,8 @@ This document turns the project design into a build sequence. The plan assumes a
 6. Create a small set of questions with known source pages and inspect the top retrieved passages.
 
 **Done when:** For the reviewed questions, retrieval returns the supporting passage with the correct book and page metadata, and users cannot retrieve another user's chunks.
+
+**Implementation:** PDF extraction, overlapping chunks, pinned local embeddings, owner-scoped pgvector search, processing status/retry, and the library passage-search panel are implemented. See [Phase 2 Setup](docs/PHASE_2_SETUP.md) for migration, configuration, and repeatable verification. Production worker deployment and OCR remain outside this phase.
 
 ## Phase 3 — Add grounded question answering
 
