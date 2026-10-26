@@ -120,6 +120,10 @@ Phase 1 provides the starter application foundation:
 - **Data and files:** Supabase Auth, PostgreSQL with Row Level Security, and a private PDF bucket. The browser uses only the publishable key; the secret key stays in the backend environment.
 - **Upload interaction:** drag-and-drop and file picker, server-side type/size/signature validation, visible progress, and cubic-bezier book animation.
 
+![Bookwise private library showing a successfully uploaded PDF queued for processing](assets/images/phase-1-book-upload.png)
+
+Successful Phase 1 upload: the PDF appears in the private library with status **Queued**. Text extraction and indexing are planned for Phase 2.
+
 See [Phase 1 Setup](docs/PHASE_1_SETUP.md) for each Supabase and local setup step, and [Phase 1 Questions](docs/PHASE_1_QUESTIONS.md) for the technical and conceptual Q&A. Phase 1 stores uploaded PDFs; text extraction, indexing, and book Q&A arrive in later phases.
 
 ## Learning resource
