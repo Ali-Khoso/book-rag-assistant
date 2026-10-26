@@ -10,6 +10,7 @@ node_modules/
 frontend/.next/
 frontend/out/
 npm-debug.log*
+*.tsbuildinfo
 
 # Python
 __pycache__/

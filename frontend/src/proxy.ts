@@ -23,7 +23,7 @@ export async function proxy(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const isLibraryRoute = request.nextUrl.pathname.startsWith("/library");
 
-  if (isLibraryRoute && !data.claims) {
+  if (isLibraryRoute && !data?.claims) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", request.nextUrl.pathname);
