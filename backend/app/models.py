@@ -18,6 +18,10 @@ class DocumentResponse(BaseModel):
     processed_at: str | None = None
     title: str | None = None
     author: str | None = None
+    processing_attempts: int = 0
+    processing_max_attempts: int = 3
+    processing_next_attempt_at: str | None = None
+    file_size_bytes: int = 0
 
 
 class SearchRequest(BaseModel):
