@@ -5,19 +5,20 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { UploadBook } from "@/components/upload-book";
 import { BookSearch } from "@/components/book-search";
-import { bookRequest, SignInRequired, type Book } from "@/lib/book-api";
+import { bookRequest, SignInRequired, type Book, type Usage } from "@/lib/book-api";
 import { createClient } from "@/lib/supabase/client";
 
 export function LibraryDashboard() {
   const router = useRouter();
   const [books, setBooks] = useState<Book[]>([]);
+  const [usage, setUsage] = useState<Usage | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [busyBook, setBusyBook] = useState<string | null>(null);
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
   const backgroundLoading = useRef(false);
   const loadGeneration = useRef(0);
-  const hasPendingBooks = books.some((book) => book.status === "queued" || book.status === "processing");
+  const hasPendingBooks = books.some((book) => book.status === "queued" || book.status === "processing") || (usage?.pending_deletions || 0) > 0;
   const selectedBook = books.find((book) => book.id === selectedBookId);
 
   const loadBooks = useCallback(async (background = false, signal?: AbortSignal) => {
@@ -26,8 +27,12 @@ export function LibraryDashboard() {
     const generation = ++loadGeneration.current;
     if (!background) setError("");
     try {
-      const payload = await bookRequest<Book[]>("/api/documents", { signal });
-      if (!signal?.aborted && generation === loadGeneration.current) setBooks(payload);
+      const [library, limits] = await Promise.allSettled([bookRequest<Book[]>("/api/documents", { signal }), bookRequest<Usage>('/api/usage', { signal })]);
+      if (library.status === 'rejected') throw library.reason;
+      if (!signal?.aborted && generation === loadGeneration.current) {
+        setBooks(library.value);
+        setUsage(limits.status === 'fulfilled' ? limits.value : null);
+      }
     } catch (caught) {
       if (signal?.aborted) return;
       if (caught instanceof SignInRequired) { router.push("/login"); return; }
@@ -75,6 +80,7 @@ export function LibraryDashboard() {
       loadGeneration.current += 1;
       setBooks((current) => current.filter((item) => item.id !== book.id));
       if (selectedBookId === book.id) setSelectedBookId(null);
+      void loadBooks(true);
     } catch (caught) {
       if (caught instanceof SignInRequired) { router.push("/login"); return; }
       setError(caught instanceof Error ? caught.message : "Could not delete this book.");
@@ -92,6 +98,12 @@ export function LibraryDashboard() {
         <div className="library-count"><strong>{books.length.toString().padStart(2, "0")}</strong><span>books in your library</span></div>
       </section>
       <UploadBook onUploaded={() => void loadBooks()} />
+      {usage && <aside className="library-usage glass-panel" aria-label="Your usage">
+        <span><strong>{usage.books}/{usage.max_books}</strong> books</span>
+        <span><strong>{(usage.storage_bytes / 1048576).toFixed(1)} / {Math.round(usage.max_storage_bytes / 1048576)} MiB</strong> stored</span>
+        <span><strong>{usage.questions_today}/{usage.max_questions_per_day}</strong> questions today</span>
+        {usage.pending_deletions > 0 && <span>Removing {usage.pending_deletions} deleted {usage.pending_deletions === 1 ? 'file' : 'files'}…</span>}
+      </aside>}
       <section className="library-list-section">
         <div className="section-heading-row"><div><p className="eyebrow">Collection</p><h2>Your books</h2></div><span className="collection-count">{books.length} total</span></div>
         {error && <p className="notice notice-error" role="alert">{error}</p>}
@@ -102,7 +114,7 @@ export function LibraryDashboard() {
             <div className="book-row-cover" aria-hidden="true"><span>PDF</span></div>
             <div className="book-row-info"><h3>{book.title || book.filename}</h3>{book.title && <p>{book.filename}{book.author && " · " + book.author}</p>}<p>Added {new Date(book.created_at).toLocaleDateString()}{book.status === "ready" && " · " + book.page_count + " pages · " + book.chunk_count + " passages"}</p>
               {book.status === "processing" && <p className="book-progress">{book.processing_stage || "Processing your book…"}</p>}
-              {book.status === "queued" && <p className="book-progress">Waiting to process</p>}
+              {book.status === "queued" && <p className="book-progress">{book.processing_stage || 'Waiting to process'}{(book.processing_attempts || 0) > 0 && book.processing_next_attempt_at && ` · Next attempt ${new Date(book.processing_next_attempt_at).toLocaleTimeString()}`}</p>}
               {book.status === "failed" && <p className="book-processing-error">{book.processing_error || "Processing failed. Please retry."}</p>}
             </div>
             <span className={"book-status status-" + book.status}><span />{book.status}</span>

@@ -8,5 +8,7 @@ export function createClient() {
     throw new Error("Set the Supabase URL and publishable key in frontend/.env.local.");
   }
 
-  return createBrowserClient(url, publishableKey);
+  return createBrowserClient(url, publishableKey, {
+    cookieOptions: { secure: process.env.NODE_ENV === 'production', sameSite: 'lax', path: '/' },
+  });
 }

@@ -4,6 +4,9 @@
 !.env.example
 frontend/.env.local
 backend/.env
+deploy/*.env
+deploy/*.pem
+deploy/*.key
 
 # Node and Next.js
 node_modules/
