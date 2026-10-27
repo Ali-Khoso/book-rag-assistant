@@ -5,6 +5,8 @@ import { createClient } from "@/lib/supabase/client";
 export type Book = {
   id: string;
   filename: string;
+  title: string | null;
+  author: string | null;
   status: "queued" | "processing" | "ready" | "failed";
   page_count: number | null;
   created_at: string;

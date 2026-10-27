@@ -88,7 +88,7 @@ export function LibraryDashboard() {
         <div className="library-top-actions"><span className="privacy-pill"><span className="privacy-dot" /> Private library</span><button className="button button-quiet" onClick={() => void signOut()}>Sign out</button></div>
       </header>
       <section className="library-heading">
-        <div><p className="eyebrow">Your reading space</p><h1>Books, ready to explore.</h1><p className="muted-copy">Upload a PDF, follow its progress, and search the passages inside.</p></div>
+        <div><p className="eyebrow">Your reading space</p><h1>Books, ready to explore.</h1><p className="muted-copy">Upload a PDF, ask questions, and explore the sources behind each answer.</p></div>
         <div className="library-count"><strong>{books.length.toString().padStart(2, "0")}</strong><span>books in your library</span></div>
       </section>
       <UploadBook onUploaded={() => void loadBooks()} />
@@ -100,13 +100,14 @@ export function LibraryDashboard() {
         ) : (
           <div className="book-list">{books.map((book) => <article className="book-row glass-panel" key={book.id}>
             <div className="book-row-cover" aria-hidden="true"><span>PDF</span></div>
-            <div className="book-row-info"><h3>{book.filename}</h3><p>Added {new Date(book.created_at).toLocaleDateString()}{book.status === "ready" && " · " + book.page_count + " pages · " + book.chunk_count + " passages"}</p>
+            <div className="book-row-info"><h3>{book.title || book.filename}</h3>{book.title && <p>{book.filename}{book.author && " · " + book.author}</p>}<p>Added {new Date(book.created_at).toLocaleDateString()}{book.status === "ready" && " · " + book.page_count + " pages · " + book.chunk_count + " passages"}</p>
               {book.status === "processing" && <p className="book-progress">{book.processing_stage || "Processing your book…"}</p>}
               {book.status === "queued" && <p className="book-progress">Waiting to process</p>}
               {book.status === "failed" && <p className="book-processing-error">{book.processing_error || "Processing failed. Please retry."}</p>}
             </div>
             <span className={"book-status status-" + book.status}><span />{book.status}</span>
             <div className="book-actions">
+              {book.status === "ready" && <Link className="button button-dark" href={`/library/books/${book.id}`}>Ask book</Link>}
               {book.status === "ready" && <button className="button button-quiet" type="button" aria-pressed={selectedBookId === book.id} onClick={() => setSelectedBookId(book.id)}>Search book</button>}
               {(book.status === "failed" || book.status === "ready") && <button className="button button-quiet" type="button" disabled={busyBook !== null} onClick={() => void retryBook(book)}>{busyBook === book.id ? "Please wait…" : book.status === "failed" ? "Retry" : "Reprocess"}</button>}
               <button className="button button-quiet book-delete" type="button" disabled={busyBook !== null} onClick={() => void deleteBook(book)} aria-label={"Delete " + book.filename}>Delete</button>
