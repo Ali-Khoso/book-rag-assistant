@@ -15,12 +15,14 @@ FACT_PAGES = [
 ]
 
 
-def make_pdf(pages: list[str], *, encrypted: bool = False, image_only: bool = False) -> bytes:
+def make_pdf(pages: list[str], *, encrypted: bool = False, image_only: bool = False, metadata: dict | None = None) -> bytes:
     """Place each string on its own PDF page using the standard Helvetica font."""
     writer = PdfWriter()
+    if metadata:
+        writer.add_metadata(metadata)
     for text in pages:
         page = writer.add_blank_page(width=612, height=792)
-        font = DictionaryObject({NameObject('/Type'): NameObject('/Font'), NameObject('/Subtype'): NameObject('/Type1'), NameObject('/BaseFont'): NameObject('/Helvetica')})
+        font = DictionaryObject({NameObject('/Type'): NameObject('/Font'), NameObject('/Subtype'): NameObject('/Type1'), NameObject('/BaseFont'): NameObject('/Helvetica'), NameObject('/Encoding'): NameObject('/WinAnsiEncoding')})
         resources = DictionaryObject({NameObject('/Font'): DictionaryObject({NameObject('/F1'): writer._add_object(font)})})
         if image_only:
             image = DecodedStreamObject()

@@ -56,7 +56,7 @@ def run() -> None:
         try:
             health = request('GET', '/api/health')
             health.raise_for_status()
-            assert health.json()['phase'] == '2'
+            assert health.json()['phase'] in ('2', '3')
             for label in ('a', 'b'):
                 email = f'phase2-test-{label}-{uuid4().hex}@example.com'
                 password = secrets.token_urlsafe(28)

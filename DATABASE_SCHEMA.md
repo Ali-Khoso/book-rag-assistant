@@ -2,7 +2,7 @@
 
 ## Status
 
-This is the proposed logical schema for the first production-oriented version. It is a design document, not an applied database migration. The final SQL types and embedding dimensions should be selected with the chosen providers and hosting environment.
+The diagram describes the original logical design. The actual Supabase schema is defined by migrations 0001–0004 in `supabase/migrations/`. Apply them in order. The implementation uses Supabase Auth, private Storage, 256-dimensional pgvector embeddings, and owner-scoped backend writes. Applying migrations to a hosted project is a separate setup step; this document does not execute SQL.
 
 ## Entity relationship diagram
 
@@ -13,11 +13,12 @@ This is the proposed logical schema for the first production-oriented version. I
 | Table | Main columns | Purpose |
 | --- | --- | --- |
 | `users` | `id` (PK), `auth_subject` (unique), `created_at` | Maps the identity provider's subject to the application's user record. |
-| `documents` | `id` (PK), `user_id` (FK), `filename`, `storage_key`, `status`, `page_count`, `created_at` | Tracks the uploaded book, its owner, private storage location, and ingestion state. |
+| `documents` | `id` (PK), `user_id` (FK), `filename`, `storage_key`, `status`, `page_count`, `title`, `author`, `metadata_checked`, processing fields | Tracks the uploaded book, owner, index generation, and stated PDF metadata. |
 | `chunks` | `id` (PK), `document_id` (FK), `user_id` (FK), `content`, `embedding`, `page_start`, `page_end`, `chunk_index` | Stores searchable text passages and the page metadata needed for citations. |
-| `conversations` | `id` (PK), `user_id` (FK), `title`, `created_at` | Groups a user's questions and answers. |
-| `messages` | `id` (PK), `conversation_id` (FK), `role`, `content`, `created_at` | Stores a user question or assistant answer. |
-| `message_citations` | `message_id` (PK/FK), `chunk_id` (PK/FK), `rank` | Joins an answer to the retrieved source chunks that support it. |
+| `conversations` | `id` (PK), `user_id` (FK), `document_id` (FK), `title`, timestamps, active request lease | Groups a user's questions and answers about one selected book. |
+| `messages` | `id` (PK), `conversation_id` (FK), `role`, `content`, `sequence_number`, `answer_status`, `answer_payload`, `created_at` | Stores ordered questions/answers and structured source snapshots. |
+| `message_citations` | `id` (PK), `message_id` (FK), nullable `chunk_id` (FK), `document_id` (FK), `rank`, `source_kind`, filename, pages, excerpt, quote | Preserves verified evidence, including metadata sources, after reprocessing. |
+| `chat_requests` | UUID `id` (PK), `user_id`, `document_id`, `conversation_id`, `processing_run_id`, `question`, `state`, `started_at`, `response` | Backend-only idempotency records and atomic turn state. |
 
 ## Relationships
 
@@ -26,7 +27,8 @@ This is the proposed logical schema for the first production-oriented version. I
 - One user owns many conversations.
 - One conversation contains many messages.
 - A message can cite many chunks, and a chunk can support many messages. `message_citations` represents this many-to-many relationship.
-- The composite primary key `(message_id, chunk_id)` prevents the same source chunk from being attached to one message more than once.
+- A conversation is bound to one document; deleting that document cascades to its conversations, messages, citation snapshots, and request records.
+- Citations use a UUID primary key and unique `(message_id, rank)`. A chunk can support multiple separate quoted claims in one answer. Reprocessing sets old citation `chunk_id` links to null while retaining their text/page snapshots.
 
 ## Data rules
 
@@ -50,8 +52,12 @@ This is the proposed logical schema for the first production-oriented version. I
 
 Every document, chunk, conversation, and message read must be scoped to the authenticated owner. Enforce this in API queries and database policies such as row-level security; a client-supplied ID alone is not proof of access.
 
-Deleting a document must also delete its chunks and citation links. The original file lives in object storage, so deletion should coordinate database cleanup with storage deletion and retry failed cleanup safely. User deletion should follow the product's documented retention policy.
+Deleting a document deletes its chunks and conversations through database foreign keys. The API removes its private original file before deleting its database row. Coordinated cleanup retries and production retention policies remain Phase 4 work. Reprocessing retains existing conversation source snapshots even though it replaces the chunks.
 
 ## Implementation note
 
-The diagram shows logical relationships and important fields. Add the actual SQL migration only after the project selects its authentication provider, database, embedding model, vector dimension, and retention rules.
+Migration 0003 adds processing leases, embedding identity, and owner/book/generation-scoped vector search. Migration 0004 adds metadata and chat persistence. `phase3_begin_turn`, `phase3_finish_turn`, and `phase3_abort_turn` are executable only by the backend service role. The API derives the owner from a verified access token; callers cannot supply their own owner ID.
+
+The finish RPC locks the current book/conversation state, rejects changed processing generations and foreign chunks, verifies continuous supporting quotes, derives source pages from the stored chunk, and commits both messages with citations together. Completed request UUIDs return their saved response. Message ordering uses unique `(conversation_id, sequence_number)`, with paginated history reads.
+
+Authenticated browser clients retain owner-scoped read policies for books, conversations, messages, and citation snapshots. Citation policies follow the conversation and document owner, so snapshots remain readable after old chunks are deleted. `chat_requests` has RLS enabled with no browser policies. The API exposes no arbitrary SQL interface or service key to the frontend.

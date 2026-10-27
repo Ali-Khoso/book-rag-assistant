@@ -43,6 +43,8 @@ This document turns the project design into a build sequence. The plan uses a Ne
 
 **Done when:** A demo question receives an answer with a citation that supports it, and an out-of-book question receives an honest insufficient-evidence response.
 
+**Phase 3 implementation:** The answer service, structured local/hosted provider adapter, verified source snapshots, selected-book chat page, private history, insufficient-evidence response, and idempotent retry are implemented. Title/author questions use stated PDF metadata before opening-page retrieval. Apply migration 0004 and configure the model using [Phase 3 Setup](docs/PHASE_3_SETUP.md); see [Phase 3 Validation](docs/PHASE_3_VALIDATION.md) for the checks actually run.
+
 ## Phase 4 — Harden and deploy the application
 
 **Goal:** Make the complete upload-to-cited-answer flow reliable enough to use online.

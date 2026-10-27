@@ -18,7 +18,7 @@ The application processes an uploaded PDF, extracts text and page metadata, divi
 
 1. Upload a PDF book or learning document.
 2. See its processing status and, when ready, open it from a personal library.
-3. Ask a question about one selected book or a chosen group of books.
+3. Ask a question about one selected book.
 4. Read an answer with page citations and supporting excerpts.
 5. Open a citation to check the original passage.
 
@@ -135,9 +135,20 @@ See [Phase 1 Setup](docs/PHASE_1_SETUP.md) for the initial Supabase and local se
 - **Processing status and retry:** queued books process in the background, progress refreshes automatically, and failed or ready books can be retried or reprocessed safely.
 - **Retrieval testing:** offline tests and an opt-in live check cover reviewed questions, page provenance, reprocessing, and two-user access isolation.
 
-Apply the new migration and follow [Phase 2 Setup](docs/PHASE_2_SETUP.md). Existing queued books are processed automatically when the API starts. Phase 2 retrieves source passages; generated answers with citations arrive in Phase 3.
+Apply the migration and follow [Phase 2 Setup](docs/PHASE_2_SETUP.md). Existing queued books are processed automatically when the API starts. Phase 2 retrieves source passages; Phase 3 adds generated answers.
 
 See [Phase 2 Validation](docs/PHASE_2_VALIDATION.md) for the checked retrieval results, access-control checks, browser flow, and current limitations.
+
+## Phase 3 implementation
+
+- **Book conversations:** open a ready book with **Ask book**, ask follow-up questions, and resume or delete saved conversations.
+- **Grounded answers:** a local Ollama model generates concise answers from retrieved passages; an optional private OpenAI provider is also supported.
+- **Verified citations:** source IDs and supporting quotes are checked, while SQL derives page ranges and snapshots from the selected book's stored evidence. Expand each source to inspect its quote and excerpt.
+- **Honest abstention:** missing or invalid evidence returns an insufficient-evidence message. Provider outages show retryable errors.
+- **Title and author:** direct identity questions use stated PDF metadata, with opening-page evidence as a fallback. Metadata citations are labeled separately from page citations.
+- **Private history and retry:** owner-scoped conversations, atomic question/answer saves, request idempotency, and preserved source snapshots after reprocessing.
+
+Run `supabase/migrations/0004_phase3_answers.sql` before starting this version, then follow [Phase 3 Setup](docs/PHASE_3_SETUP.md). The default answer model requires a one-time local download; it needs no paid API key. See [Phase 3 Validation](docs/PHASE_3_VALIDATION.md) for verification status and limits. Production deployment and broader answer-quality evaluation remain Phase 4 work.
 
 ## Learning resource
 
