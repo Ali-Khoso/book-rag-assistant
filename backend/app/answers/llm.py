@@ -1,12 +1,14 @@
 """Grounded generation: structured local Ollama or private OpenAI Responses API."""
 
 import json
+from time import monotonic
 
 import httpx
 from pydantic import ValidationError
 
 from app.answers.models import ModelAnswer
 from app.config import Settings
+from app.observability import metrics
 
 
 class ModelUnavailable(Exception):
@@ -45,6 +47,7 @@ class LanguageModel:
         self.transport = transport
 
     def generate(self, question: str, evidence: list[dict], history: list[dict]) -> ModelAnswer:
+        started, success, input_tokens, output_tokens = monotonic(), False, None, None
         schema = answer_schema([source["source_id"] for source in evidence])
         # Keep recent follow-up context bounded; past answers are never evidence.
         recent_history = []
@@ -72,6 +75,7 @@ class LanguageModel:
                     if body.get("done_reason") == "length":
                         raise ValueError("Truncated response")
                     text = body["message"]["content"]
+                    input_tokens, output_tokens = body.get('prompt_eval_count'), body.get('eval_count')
                 else:
                     response = client.post('https://api.openai.com/v1/responses',
                         headers={"Authorization": "Bearer " + self.config.openai_api_key.get_secret_value()},
@@ -84,9 +88,15 @@ class LanguageModel:
                         raise ValueError("Incomplete response")
                     text = ''.join(block.get('text', '') for item in body.get('output', [])
                         if item.get('type') == 'message' for block in item.get('content', []) if block.get('type') == 'output_text')
-            return ModelAnswer.model_validate_json(text)
+                    usage = body.get('usage') or {}
+                    input_tokens, output_tokens = usage.get('input_tokens'), usage.get('output_tokens')
+            answer = ModelAnswer.model_validate_json(text)
+            success = True
+            return answer
         except httpx.TimeoutException as exc:
             raise ModelUnavailable("Preparing the answer took too long. Please try again.") from exc
         except (httpx.HTTPError, ValueError, KeyError, ValidationError) as exc:
             # Never expose provider response bodies, prompts, API keys, or tokens.
             raise ModelUnavailable("Answers are temporarily unavailable. Please try again in a moment.") from exc
+        finally:
+            metrics.model(self.config.llm_provider, success, monotonic() - started, input_tokens, output_tokens)

@@ -2,8 +2,9 @@
 
 
 class ChatRepository:
-    def __init__(self, client):
+    def __init__(self, client, concurrent_limit=1):
         self.client = client
+        self.concurrent_limit = concurrent_limit
 
     def list_conversations(self, owner: str, document_id: str) -> list[dict]:
         """List only the selected book's recent owner-scoped conversations."""
@@ -26,8 +27,9 @@ class ChatRepository:
 
     def begin(self, owner: str, document_id: str, request_id: str, question: str, conversation_id: str | None) -> dict:
         """Reserve one conversation turn or return an already completed request."""
-        return self.client.rpc("phase3_begin_turn", {"p_user_id": owner, "p_document_id": document_id,
-            "p_request_id": request_id, "p_question": question, "p_conversation_id": conversation_id}).execute().data
+        return self.client.rpc("phase4_begin_turn", {"p_user_id": owner, "p_document_id": document_id,
+            "p_request_id": request_id, "p_question": question, "p_conversation_id": conversation_id,
+            'p_concurrent_limit': self.concurrent_limit}).execute().data
 
     def finish(self, owner: str, document_id: str, request_id: str, payload: dict, sources: list[dict]) -> dict:
         """SQL validates source ownership, generation, quotes, and page snapshots."""

@@ -3,9 +3,13 @@
 from contextlib import asynccontextmanager
 from pathlib import PurePosixPath
 from uuid import UUID
+from secrets import compare_digest
 
-from fastapi import Depends, FastAPI, File, HTTPException, Query, Response, UploadFile, status
+from fastapi import Depends, FastAPI, File, Header, HTTPException, Query, Request, Response, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.concurrency import run_in_threadpool
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.responses import JSONResponse
 
 from app.config import Settings, settings
 from app.answers.llm import LanguageModel, ModelUnavailable
@@ -19,14 +23,20 @@ from app.processing.worker import ProcessingWorker
 from app.repository import SupabaseRepository
 from app.security import VerifiedUser, require_user
 from app.supabase_client import service_client
+from app.operations import ControlsUnavailable, LibraryQuotaExceeded, LimitExceeded, OperationalControls
+from app.http_middleware import OperationalMiddleware
+from app.observability import configure_logging, metrics
+from app.readiness import Readiness
 
 
-def create_app(repository=None, embeddings=None, config: Settings | None = None, *, worker_enabled: bool | None = None, chat_repository=None, language_model=None) -> FastAPI:
+def create_app(repository=None, embeddings=None, config: Settings | None = None, *, worker_enabled: bool | None = None, chat_repository=None, language_model=None, controls=None, readiness=None) -> FastAPI:
     """Construct the API with replaceable services for offline ownership tests."""
     config = config or settings
     repository = repository or SupabaseRepository(service_client, config)
     embeddings = embeddings or EmbeddingService(config)
-    chats = chat_repository or ChatRepository(service_client)
+    chats = chat_repository or ChatRepository(service_client, config.max_concurrent_answers_per_user)
+    controls = controls or OperationalControls(service_client, config)
+    readiness = readiness or Readiness(controls, embeddings, config)
     language_model = language_model or LanguageModel(config)
     answers = AnswerService(repository, chats, embeddings, language_model, config)
     enabled = config.processing_enabled if worker_enabled is None else worker_enabled
@@ -34,17 +44,43 @@ def create_app(repository=None, embeddings=None, config: Settings | None = None,
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
+        configure_logging()
+        if config.warm_models:
+            await run_in_threadpool(embeddings.warmup)
         if enabled:
             worker.start()
         yield
         worker.stop()
 
-    application = FastAPI(title="Book RAG Assistant API", version="0.3.0",
-        docs_url="/api/docs", redoc_url=None, lifespan=lifespan)
+    application = FastAPI(title="Book RAG Assistant API", version="0.4.0",
+        docs_url=None if config.environment == 'production' else '/api/docs',
+        openapi_url=None if config.environment == 'production' else '/openapi.json', redoc_url=None, lifespan=lifespan)
+    application.add_middleware(TrustedHostMiddleware, allowed_hosts=config.allowed_hosts)
+    application.add_middleware(OperationalMiddleware, config=config)
     application.add_middleware(CORSMiddleware,
         allow_origins=[config.frontend_origin], allow_credentials=False,
         allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-        allow_headers=["Authorization", "Content-Type"])
+        allow_headers=["Authorization", "Content-Type"], expose_headers=['Retry-After','X-Request-ID'])
+
+    async def limited_user(request: Request, user: VerifiedUser = Depends(require_user)):
+        """Verify identity before charging shared budgets; no client owner ID is used."""
+        path = getattr(request.scope.get('route'), 'path', '')
+        action = 'read' if request.method == 'GET' else 'delete' if request.method == 'DELETE' else (
+            'ask' if path.endswith('/ask') else 'search' if path.endswith('/search') else 'retry' if path.endswith('/retry') else 'upload')
+        operation = None
+        if action == 'ask':
+            try:
+                payload = await request.json()
+                operation = UUID(str(payload.get('request_id'))) if isinstance(payload, dict) and payload.get('request_id') else None
+            except (ValueError, TypeError):
+                pass
+        try:
+            await run_in_threadpool(controls.consume, user.id, action, operation)
+        except LimitExceeded as exc:
+            raise HTTPException(429, str(exc), headers={'Retry-After': str(exc.retry_after)}) from exc
+        except ControlsUnavailable as exc:
+            raise HTTPException(503, str(exc)) from exc
+        return user
 
     def owned_document(document_id: UUID, user: VerifiedUser) -> dict:
         """Use the verified token's owner before accessing a file, retry, or search."""
@@ -84,10 +120,39 @@ def create_app(repository=None, embeddings=None, config: Settings | None = None,
 
     @application.get("/api/health")
     def health() -> dict[str, str]:
-        return {"status": "ok", "phase": "3", "processing": worker.state if enabled else "disabled", "answers": config.llm_provider}
+        return {"status": "ok", "phase": "4", "processing": worker.state if enabled else "external", "answers": config.llm_provider}
+
+    @application.get('/api/live')
+    def live():
+        return {'status': 'ok'}
+
+    @application.get('/api/ready')
+    def ready():
+        checks = readiness.check()
+        return JSONResponse({'status': 'ready' if all(checks.values()) else 'unavailable', 'checks': checks},
+            status_code=200 if all(checks.values()) else 503)
+
+    @application.get('/api/metrics')
+    def operational_metrics(authorization: str | None = Header(default=None)):
+        if not config.monitoring_token:
+            raise HTTPException(404, 'Not found.')
+        expected = 'Bearer ' + config.monitoring_token.get_secret_value()
+        if not authorization or not compare_digest(authorization.encode(), expected.encode()):
+            raise HTTPException(401, 'Monitoring authentication required.')
+        try:
+            return {**metrics.snapshot(), 'queue': controls.health()}
+        except Exception as exc:
+            raise HTTPException(503, 'Operational data is temporarily unavailable.') from exc
+
+    @application.get('/api/usage')
+    def usage(user: VerifiedUser = Depends(limited_user)):
+        try:
+            return controls.usage(user.id)
+        except Exception as exc:
+            raise HTTPException(503, 'Could not load your usage. Please try again.') from exc
 
     @application.get("/api/documents", response_model=list[DocumentResponse])
-    def list_documents(user: VerifiedUser = Depends(require_user)):
+    def list_documents(user: VerifiedUser = Depends(limited_user)):
         """Processing status: return current stages, failures, and indexed counts."""
         try:
             return repository.list_documents(user.id)
@@ -95,11 +160,11 @@ def create_app(repository=None, embeddings=None, config: Settings | None = None,
             raise HTTPException(status_code=503, detail="Could not load your book library.") from exc
 
     @application.get("/api/documents/{document_id}", response_model=DocumentResponse)
-    def get_document(document_id: UUID, user: VerifiedUser = Depends(require_user)):
+    def get_document(document_id: UUID, user: VerifiedUser = Depends(limited_user)):
         return owned_document(document_id, user)
 
     @application.post("/api/documents", response_model=DocumentResponse, status_code=status.HTTP_201_CREATED)
-    def upload_document(file: UploadFile = File(...), user: VerifiedUser = Depends(require_user)):
+    def upload_document(file: UploadFile = File(...), user: VerifiedUser = Depends(limited_user)):
         """Validate a private PDF upload, then let the worker process its queued row."""
         filename = PurePosixPath((file.filename or "").replace("\\", "/")).name.strip()
         if not filename or not filename.lower().endswith(".pdf"):
@@ -117,6 +182,8 @@ def create_app(repository=None, embeddings=None, config: Settings | None = None,
             raise HTTPException(status_code=415, detail="The file does not contain a valid PDF signature.")
         try:
             row = repository.create_document(user.id, filename, content)
+        except LibraryQuotaExceeded as exc:
+            raise HTTPException(409, str(exc)) from exc
         except Exception as exc:
             raise HTTPException(status_code=502, detail="The PDF could not be saved. Please try again.") from exc
         if enabled:
@@ -124,7 +191,7 @@ def create_app(repository=None, embeddings=None, config: Settings | None = None,
         return row
 
     @application.post("/api/documents/{document_id}/retry", response_model=DocumentResponse, status_code=status.HTTP_202_ACCEPTED)
-    def retry_document(document_id: UUID, user: VerifiedUser = Depends(require_user)):
+    def retry_document(document_id: UUID, user: VerifiedUser = Depends(limited_user)):
         """Processing status and retry: safely requeue failed or previously indexed books."""
         row = owned_document(document_id, user)
         if row["status"] == "processing":
@@ -140,7 +207,7 @@ def create_app(repository=None, embeddings=None, config: Settings | None = None,
         return queued
 
     @application.post("/api/documents/{document_id}/search", response_model=SearchResponse)
-    def search_document(document_id: UUID, request: SearchRequest, user: VerifiedUser = Depends(require_user)):
+    def search_document(document_id: UUID, request: SearchRequest, user: VerifiedUser = Depends(limited_user)):
         """Vector storage and search: retrieve passages only from the owner's ready book."""
         row = owned_document(document_id, user)
         if row["status"] != "ready":
@@ -157,18 +224,20 @@ def create_app(repository=None, embeddings=None, config: Settings | None = None,
             raise HTTPException(status_code=503, detail="Could not search this book. Please try again.") from exc
 
     @application.delete("/api/documents/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
-    def delete_document(document_id: UUID, user: VerifiedUser = Depends(require_user)):
+    def delete_document(document_id: UUID, user: VerifiedUser = Depends(limited_user)):
         """Remove the private file and owner-scoped row; indexed chunks cascade away."""
         row = owned_document(document_id, user)
         try:
             repository.delete_document(row, user.id)
         except Exception as exc:
             raise HTTPException(status_code=503, detail="The book could not be deleted.")
+        if enabled:
+            worker.wake()
         return Response(status_code=204)
 
     # Grounded Q&A: only the book's verified owner can ask, resume, or read a chat.
     @application.post("/api/documents/{document_id}/ask", response_model=AnswerResponse)
-    def ask_document(document_id: UUID, request: AskRequest, user: VerifiedUser = Depends(require_user)):
+    def ask_document(document_id: UUID, request: AskRequest, user: VerifiedUser = Depends(limited_user)):
         book = owned_document(document_id, user)
         if book["status"] != "ready":
             raise HTTPException(status_code=409, detail="This book is not ready for questions. Wait for processing or retry a failed book.")
@@ -182,7 +251,7 @@ def create_app(repository=None, embeddings=None, config: Settings | None = None,
             raise answer_error(exc) from exc
 
     @application.get("/api/documents/{document_id}/conversations", response_model=list[ConversationSummary])
-    def list_conversations(document_id: UUID, user: VerifiedUser = Depends(require_user)):
+    def list_conversations(document_id: UUID, user: VerifiedUser = Depends(limited_user)):
         owned_document(document_id, user)
         try:
             return chats.list_conversations(user.id, str(document_id))
@@ -190,7 +259,7 @@ def create_app(repository=None, embeddings=None, config: Settings | None = None,
             raise HTTPException(status_code=503, detail="Could not load your conversations.") from exc
 
     @application.get("/api/conversations/{conversation_id}", response_model=ConversationResponse)
-    def read_conversation(conversation_id: UUID, before_sequence: int | None = Query(default=None, ge=1), user: VerifiedUser = Depends(require_user)):
+    def read_conversation(conversation_id: UUID, before_sequence: int | None = Query(default=None, ge=1), user: VerifiedUser = Depends(limited_user)):
         """Return ordered history with immutable citations and optional older pages."""
         conversation = owned_conversation(conversation_id, user)
         try:
@@ -201,7 +270,7 @@ def create_app(repository=None, embeddings=None, config: Settings | None = None,
             raise HTTPException(status_code=503, detail="Could not load this conversation's messages.") from exc
 
     @application.delete("/api/conversations/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
-    def delete_conversation(conversation_id: UUID, user: VerifiedUser = Depends(require_user)):
+    def delete_conversation(conversation_id: UUID, user: VerifiedUser = Depends(limited_user)):
         owned_conversation(conversation_id, user)
         try:
             chats.delete_conversation(user.id, str(conversation_id))
