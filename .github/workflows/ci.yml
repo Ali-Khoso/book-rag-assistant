@@ -1,0 +1,79 @@
+name: Verify application and deployment
+on:
+  push:
+    branches: [main]
+  pull_request:
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPABASE_URL: https://ci.supabase.co
+      SUPABASE_PUBLISHABLE_KEY: ci-public-placeholder
+      SUPABASE_SECRET_KEY: ci-server-placeholder
+      ENVIRONMENT: test
+      PROCESSING_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: backend/requirements.lock
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - run: python -m pip install --require-hashes -r backend/requirements.lock
+      - run: python -m pip install 'pytest>=8,<10'
+      - run: python -m pip install pip-audit==2.10.1
+      - run: python -m pip_audit -r backend/requirements.lock --require-hashes --disable-pip --progress-spinner off --strict
+      - run: python -m pytest -q
+        working-directory: backend
+      - run: npm install --prefix backend/.cache/phase3-sql --no-save --ignore-scripts @electric-sql/pglite@0.5.12 @electric-sql/pglite-pgvector@0.0.13
+      - run: node backend/scripts/verify_phase3_sql.mjs
+      - run: node backend/scripts/verify_phase4_sql.mjs
+      - run: python -m scripts.evaluate --validate-only
+        working-directory: backend
+
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      VERCEL: '1'
+      NEXT_PUBLIC_SUPABASE_URL: https://ci.supabase.co
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ci-public-placeholder
+      NEXT_PUBLIC_API_URL: https://books.example.com
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm audit --omit=dev --audit-level=moderate
+      - run: npx tsc --noEmit
+      - run: npm run build
+
+  containers:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Validate deployment configuration with placeholders
+        run: |
+          cp deploy/backend.env.example deploy/backend.env
+          docker compose --env-file deploy/production.env.example -f deploy/compose.yaml config --quiet
+          docker run --rm -e APP_DOMAIN=books.example.com -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro" caddy:2-alpine caddy validate --config /etc/caddy/Caddyfile
+      - name: Build production images without private keys
+        run: |
+          docker build -t bookwise-api:ci backend
+          docker build -t bookwise-web:ci --build-arg NEXT_PUBLIC_SUPABASE_URL=https://ci.supabase.co --build-arg NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=ci-public-placeholder --build-arg NEXT_PUBLIC_API_URL=https://books.example.com frontend

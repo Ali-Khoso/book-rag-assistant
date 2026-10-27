@@ -55,7 +55,7 @@ def run() -> None:
             return response.json()
 
         try:
-            assert request('GET', '/api/health').json()['phase'] == '3'
+            assert request('GET', '/api/health').json()['phase'] in ('3', '4')
             for label in ('a', 'b'):
                 email, password = f'phase3-test-{label}-{uuid4().hex}@example.com', secrets.token_urlsafe(28)
                 response = client.post(base + '/auth/v1/admin/users', headers=admin,
