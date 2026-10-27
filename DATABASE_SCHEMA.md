@@ -20,6 +20,18 @@ The diagram describes the original logical design. The actual Supabase schema is
 | `message_citations` | `id` (PK), `message_id` (FK), nullable `chunk_id` (FK), `document_id` (FK), `rank`, `source_kind`, filename, pages, excerpt, quote | Preserves verified evidence, including metadata sources, after reprocessing. |
 | `chat_requests` | UUID `id` (PK), `user_id`, `document_id`, `conversation_id`, `processing_run_id`, `question`, `state`, `started_at`, `response` | Backend-only idempotency records and atomic turn state. |
 
+## Phase 4 operational fields and tables
+
+Migration 0005 adds file size, upload-completion reservations, processing attempt counts/due times, and leased deletion state to `documents`. A `deleting` row is hidden immediately by RLS while the worker retains the information needed to remove its private object. Deleting the row after object cleanup cascades its index and conversations. Incomplete uploads cannot be processed and expire into cleanup.
+
+| Table | Purpose |
+| --- | --- |
+| `usage_windows` | Atomic per-owner/action minute and UTC-day counters shared across API instances |
+| `usage_operations` | Same-day request UUID deduplication for daily usage budgets |
+| `worker_heartbeats` | Freshness/state of independently running processing workers |
+
+Operational tables have RLS enabled without browser policies. Their RPCs are service-only. API usage reads derive the owner from a verified token. Reservations and budget changes use database locks, and processing/deletion claims use row locks with unique lease IDs. Browser clients cannot call those maintenance functions or read another user's operational state.
+
 ## Relationships
 
 - One user owns many documents.

@@ -150,6 +150,17 @@ See [Phase 2 Validation](docs/PHASE_2_VALIDATION.md) for the checked retrieval r
 
 Run `supabase/migrations/0004_phase3_answers.sql` before starting this version, then follow [Phase 3 Setup](docs/PHASE_3_SETUP.md). The default answer model requires a one-time local download; it needs no paid API key. See [Phase 3 Validation](docs/PHASE_3_VALIDATION.md) for verification status and limits. Production deployment and broader answer-quality evaluation remain Phase 4 work.
 
+## Phase 4 implementation
+
+- **Separate processing worker:** persisted leases, bounded retries/backoff, crash recovery, and worker heartbeats keep ingestion independent of API restarts.
+- **Usage controls:** shared per-user minute/day budgets, book/storage quotas, one concurrent answer per user, and a private library usage summary.
+- **Reliable deletion:** books/history become inaccessible immediately; durable cleanup removes the private file and dependent records, with retry and operator recovery for failures.
+- **Production hardening:** streaming body limits, trusted hosts, exact-origin access, per-request CSP nonces, secure auth cookies, and private monitoring without book contents.
+- **Evaluation and CI:** a maintained nine-case dataset, real model/source/page checks, SQL recovery tests, dependency audits, and reproducible production builds.
+- **Deployment configuration:** Vercel frontend setup, non-root backend/worker images, and an optional complete Docker/HTTPS stack. Private environments and caches are excluded from images and Git.
+
+See [Phase 4 Setup](docs/PHASE_4_SETUP.md), [Vercel Deployment](docs/VERCEL_DEPLOYMENT.md), and [Phase 4 Validation](docs/PHASE_4_VALIDATION.md). The code is locally verified; live Vercel/backend deployment still requires your hosting configuration. A custom frontend domain is optional.
+
 ## Learning resource
 
 See [`RAG_CONCEPTS_AND_INTERVIEW_QUESTIONS.md`](RAG_CONCEPTS_AND_INTERVIEW_QUESTIONS.md) for plain-language explanations of key RAG concepts and interview questions with sample answers.

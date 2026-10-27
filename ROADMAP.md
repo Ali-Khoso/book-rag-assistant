@@ -59,6 +59,8 @@ This document turns the project design into a build sequence. The plan uses a Ne
 
 **Done when:** The deployed app passes the access-control and answer-quality checks and can process a book and return verifiable answers reliably.
 
+**Phase 4 implementation:** The separate worker, durable retry/cleanup paths, shared budgets, production HTTP/browser controls, private metrics, maintained evaluation data, CI, and deployment files are implemented and locally verified. See [Phase 4 Validation](docs/PHASE_4_VALIDATION.md) for the actual checks. The intended frontend host is Vercel. Production hosting for the API/worker/model and verification of the final online URLs remain deployment steps; this phase is not described as cloud-deployed before those steps pass.
+
 ## Keep out of the first MVP
 
 Add OCR for scanned PDFs, multi-book search, summaries, quizzes, and flashcards after the core flow is reliable. RAG indexes books and supplies relevant passages at question time; it does not fine-tune a model for each upload.
