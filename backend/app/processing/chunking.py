@@ -3,7 +3,7 @@
 from bisect import bisect_left, bisect_right
 from dataclasses import dataclass
 
-from app.processing.errors import ProcessingError
+from app.processing.errors import PermanentProcessingError as ProcessingError
 from app.processing.pdf import PageText
 
 

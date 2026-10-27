@@ -7,3 +7,7 @@ class ProcessingError(Exception):
 
 class LostLease(Exception):
     """Stop a task when its document was deleted or another run claimed it."""
+
+
+class PermanentProcessingError(ProcessingError):
+    """Invalid/unsupported files need user action rather than automatic retries."""

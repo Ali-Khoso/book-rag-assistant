@@ -72,7 +72,7 @@ class EmbeddingService:
         except ProcessingError:
             raise
         except Exception as exc:
-            raise ProcessingError("The embedding model is unavailable. Check the backend connection or model settings, then retry.") from exc
+            raise ProcessingError("The text indexing service is temporarily unavailable. Please try again later.") from exc
 
     def _embed_api(self, texts: list[str]) -> list[list[float]]:
         """Support a configured HTTPS embedding endpoint without exposing its key."""

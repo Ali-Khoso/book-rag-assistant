@@ -13,7 +13,7 @@ from tests.pdf_factory import make_pdf
 
 def test_config(**overrides):
     return Settings(_env_file=None, supabase_url='https://test.supabase.co',
-        supabase_publishable_key='test-public', supabase_secret_key='test-secret', **overrides)
+        supabase_publishable_key='test-public', supabase_secret_key='test-secret', **{'limits_enabled': False, **overrides})
 test_config.__test__ = False
 
 
@@ -46,7 +46,7 @@ def test_model_failure_records_safe_message_and_never_marks_ready():
     embeddings = Mock()
     embeddings.embed.side_effect = ProcessingError('The model is unavailable. Retry later.')
     process_document(JOB, repository, embeddings, test_config())
-    repository.fail.assert_called_once_with(JOB, 'The model is unavailable. Retry later.')
+    repository.fail.assert_called_once_with(JOB, 'The model is unavailable. Retry later.', retryable=True)
     repository.finish.assert_not_called()
 
 

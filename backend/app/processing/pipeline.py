@@ -5,7 +5,7 @@ from dataclasses import asdict
 
 from app.config import Settings
 from app.processing.chunking import chunk_pages
-from app.processing.errors import LostLease, ProcessingError
+from app.processing.errors import LostLease, PermanentProcessingError, ProcessingError
 from app.processing.pdf import extract_pdf
 
 logger = logging.getLogger(__name__)
@@ -22,7 +22,7 @@ def process_document(job: dict, repository, embeddings, config: Settings) -> Non
         progress("Downloading private PDF")
         content = repository.download(job)
         if len(content) > config.max_pdf_size_bytes:
-            raise ProcessingError("This PDF exceeds the configured upload limit. Upload a smaller copy.")
+            raise PermanentProcessingError("This PDF exceeds the configured upload limit. Upload a smaller copy.")
         extracted = extract_pdf(content, max_pages=config.max_pdf_pages,
             max_chars=config.max_extracted_chars,
             progress=lambda page, total: progress(f"Reading pages {page}/{total}"))
@@ -34,7 +34,7 @@ def process_document(job: dict, repository, embeddings, config: Settings) -> Non
         chunks = chunk_pages(extracted.pages, chunk_size=config.chunk_size_chars,
             overlap=config.chunk_overlap_chars, max_chunks=config.max_document_chunks)
         if not chunks:
-            raise ProcessingError("This PDF contains no searchable passages. It may need OCR.")
+            raise PermanentProcessingError("This PDF contains no searchable passages. It may need OCR.")
 
         # Embeddings and vector storage: batch work to bound memory and renew leases.
         for start in range(0, len(chunks), config.embedding_batch_size):
@@ -55,7 +55,7 @@ def process_document(job: dict, repository, embeddings, config: Settings) -> Non
         message = str(exc) if isinstance(exc, ProcessingError) else "Book processing could not finish. Please retry in a moment."
         logger.warning("Document processing failed: %s (%s)", job["id"], type(exc).__name__)
         try:
-            repository.fail(job, message)
+            repository.fail(job, message, retryable=not isinstance(exc, PermanentProcessingError))
         except Exception:
             # If the database is unavailable, the persisted lease allows recovery.
             logger.warning("Could not record failure for document %s; its lease will expire", job["id"])

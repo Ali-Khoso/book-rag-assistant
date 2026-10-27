@@ -8,7 +8,7 @@ from typing import Callable
 
 from pypdf import PdfReader
 
-from app.processing.errors import LostLease, ProcessingError
+from app.processing.errors import LostLease, PermanentProcessingError as ProcessingError
 from app.processing.metadata import metadata_from_reader
 
 
