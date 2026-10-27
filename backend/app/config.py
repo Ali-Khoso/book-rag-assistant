@@ -33,6 +33,17 @@ class Settings(BaseSettings):
     processing_enabled: bool = True
     processing_poll_seconds: float = Field(default=3, ge=1, le=60)
 
+    # Phase 3: language-model credentials remain on the API server only.
+    llm_provider: Literal["ollama", "openai"] = "ollama"
+    llm_model: str = "qwen2.5:3b"
+    ollama_url: str = "http://127.0.0.1:11434"
+    openai_api_key: SecretStr | None = None
+    llm_timeout_seconds: int = Field(default=180, ge=10, le=240)
+    answer_retrieval_k: int = Field(default=6, ge=1, le=10)
+    answer_context_chars: int = Field(default=9000, ge=1500, le=16000)
+    answer_min_similarity: float = Field(default=0.25, ge=0, le=1)
+    conversation_history_turns: int = Field(default=4, ge=0, le=10)
+
     @model_validator(mode="after")
     def validate_processing_settings(self):
         """Reject settings that would lose overlap progress or expose API credentials."""
@@ -41,6 +52,13 @@ class Settings(BaseSettings):
         if self.embedding_provider == "api":
             if not self.embedding_api_url.startswith("https://") or not self.embedding_api_key or not self.embedding_api_key.get_secret_value().strip():
                 raise ValueError("Hosted embeddings require an HTTPS URL and EMBEDDING_API_KEY")
+        if self.llm_provider == "openai":
+            if not self.openai_api_key or not self.openai_api_key.get_secret_value().strip():
+                raise ValueError("OpenAI answers require OPENAI_API_KEY in backend/.env")
+            if self.llm_model.startswith("qwen"):
+                raise ValueError("Set LLM_MODEL to a structured-output OpenAI model for the OpenAI provider")
+        if self.llm_provider == "ollama" and not self.ollama_url.startswith(("http://127.0.0.1:", "http://localhost:", "https://")):
+            raise ValueError("Ollama must use loopback HTTP or an HTTPS endpoint")
         return self
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore", hide_input_in_errors=True)
