@@ -2,6 +2,26 @@
 
 An AI study assistant that answers questions from books and learning documents. Upload a book, ask a question in natural language, and receive an answer grounded in retrieved passages with page citations so the reader can verify it.
 
+## Application screenshots
+
+**Home page**
+
+![Bookwise home page](assets/images/bookwise-home.png)
+
+**Sign in**
+
+![Bookwise sign-in page with password visibility control](assets/images/bookwise-sign-in.png)
+
+**Private library and PDF upload**
+
+![Bookwise private library with the PDF upload panel](assets/images/bookwise-library-upload.png)
+
+**Book ready for questions**
+
+![The Pickwick Papers ready in the library with ask, search, reprocess, and delete controls](assets/images/bookwise-ready-book.png)
+
+## Project overview
+
 ![Book RAG Assistant project overview](assets/images/book-rag-project-overview.png)
 
 ## Problem
