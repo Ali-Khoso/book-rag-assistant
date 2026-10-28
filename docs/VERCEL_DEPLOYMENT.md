@@ -4,6 +4,19 @@ The frontend is configured for Vercel. A custom domain is optional: Vercel assig
 
 ## Frontend project settings
 
+### Dashboard setup checklist
+
+1. Push your local commit to GitHub with `git push origin main` from the repository root.
+2. Open [Vercel New Project](https://vercel.com/new), connect GitHub, and import `Ali-Khoso/book-rag-assistant`.
+3. Set **Root Directory** to `frontend`, **Framework Preset** to **Next.js**, and **Node.js Version** to **24.x**. Use `npm ci` for installation and `npm run build` for the build. Leave **Output Directory** at its framework default.
+4. Add the three `NEXT_PUBLIC_*` variables listed below with your production Supabase values and the public HTTPS backend origin, then click **Deploy**. The backend must be hosted separately; a successful frontend deployment alone does not make uploads or answers work.
+5. Copy the stable production URL from the project's **Domains** settings. Use that URL, rather than a per-commit preview URL, for the backend's `FRONTEND_ORIGIN`.
+6. In Supabase, open **Authentication > URL Configuration**. Set **Site URL** to the stable production URL and add the same URL followed by `/auth/callback` to **Redirect URLs**. Apply migrations 0001 through 0005 to the production project if they are not already applied.
+7. Restart or redeploy the backend after changing its environment. Wait for `/api/ready` to return HTTP 200, then test sign-in, PDF upload, processing, and cited answers through Vercel.
+8. If a Vercel environment variable changes, redeploy the frontend: public values are embedded during the build. Future pushes to the connected production branch trigger deployments automatically when Git integration is enabled.
+
+If deployment fails, check the build log first. A missing Next.js dependency usually means the root directory is wrong. If the page loads but API calls fail, check the backend HTTPS URL, readiness, exact `FRONTEND_ORIGIN`, and `ALLOWED_HOSTS`. If email confirmation redirects to localhost, correct Supabase's Site URL and Redirect URLs.
+
 Import `Ali-Khoso/book-rag-assistant` into your Vercel account and set:
 
 | Setting | Value |
