@@ -110,7 +110,7 @@ Associate every document and chunk with its owner, and enforce ownership filters
 
 ### 21. Can text inside an uploaded book control the AI assistant?
 
-No. Retrieved book text is reference data, not an instruction source. The application should keep system instructions separate, treat document text as untrusted, and test against passages that try to manipulate the model.
+It should not, but a malicious passage can try to influence the model through prompt injection. Retrieved book text must be treated as reference data, not an instruction source. The application should keep system instructions separate, validate citations, and test against passages that try to manipulate the model. These measures reduce risk; they do not guarantee that the model will always ignore malicious instructions. Access to private books must still be enforced by backend authorization checks.
 
 ### 22. What happens when a user deletes a book?
 
