@@ -63,4 +63,4 @@ This document turns the project design into a build sequence. The plan uses a Ne
 
 ## Keep out of the first MVP
 
-Add OCR for scanned PDFs, multi-book search, summaries, quizzes, and flashcards after the core flow is reliable. RAG indexes books and supplies relevant passages at question time; it does not fine-tune a model for each upload.
+Short cited [book overviews](docs/BOOK_OVERVIEWS.md) are available from sampled passages. Add OCR for scanned PDFs, multi-book search, comprehensive chapter-by-chapter summaries, quizzes, and flashcards after the core flow is reliable. RAG indexes books and supplies relevant passages at question time; it does not fine-tune a model for each upload.

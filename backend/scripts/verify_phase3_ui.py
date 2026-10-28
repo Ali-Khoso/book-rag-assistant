@@ -55,6 +55,8 @@ def fixture_api(page, state):
                 citations = [] if unsupported else [{'rank': 1, 'source_kind': 'metadata' if title else 'passage', 'chunk_id': None if title else str(uuid4()), 'document_id': document['id'], 'filename': document['filename'], 'page_start': None if title else 3, 'page_end': None if title else 3, 'quote': quote, 'excerpt': 'PDF title: Field Notes' if title else FACT_PAGES[2]}]
                 if markup: citations[0]['excerpt'] = text
                 answer = {'status': 'insufficient_evidence' if unsupported else 'answered', 'method': 'metadata' if title else 'model', 'content': text + ('' if unsupported else ' [1]'), 'statements': [] if unsupported else [{'text': text, 'citation_ranks': [1]}], 'citations': citations}
+                if 'summary' in question.lower():
+                    answer['scope_note'] = 'Brief overview based on selected passages. Other sections may be missing.'
                 payload = {'conversation_id': conversation, 'request_id': body['request_id'], 'user_message_id': str(uuid4()), 'message_id': str(uuid4()), 'document_id': document['id'], 'question': question, 'created_at': now, 'answer': answer}
                 messages = histories[conversation]; sequence = len(messages) + 1
                 messages.extend([{'id': payload['user_message_id'], 'role': 'user', 'content': question, 'sequence_number': sequence, 'created_at': now, 'answer_payload': None}, {'id': payload['message_id'], 'role': 'assistant', 'content': answer['content'], 'sequence_number': sequence + 1, 'created_at': now, 'answer_payload': answer}])
@@ -147,6 +149,12 @@ def run():
                     assert page.locator('.chat-assistant').last.locator('img').count() == 0
                     assert page.evaluate('window.__bookwiseInjected === undefined')
                     print('PASS: untrusted answer/source markup is rendered literally and cannot execute.', flush=True)
+                    question.fill('Give me a short summary of this book'); ask_button.click()
+                    expect(page.locator('.chat-assistant')).to_have_count(6, timeout=15000)
+                    expect(page.locator('.chat-assistant').last.get_by_role('note')).to_contain_text('selected passages')
+                    page.reload(wait_until='networkidle')
+                    expect(page.locator('.chat-assistant').last.get_by_role('note')).to_contain_text('selected passages')
+                    print('PASS: overview coverage note is visible and retained after reload.', flush=True)
 
                 page.screenshot(path='.cache/phase3-browser-desktop.png', full_page=True)
                 page.set_viewport_size({'width': 390, 'height': 844})
@@ -155,7 +163,7 @@ def run():
                 page.get_by_role('button', name='New conversation', exact=True).click()
                 expect(page.locator('.chat-assistant')).to_have_count(0)
                 page.get_by_label('Conversation', exact=True).select_option(index=1)
-                expect(page.locator('.chat-assistant')).to_have_count(5 if fixtures else 3, timeout=15000)
+                expect(page.locator('.chat-assistant')).to_have_count(6 if fixtures else 3, timeout=15000)
                 page.once('dialog', lambda dialog: dialog.accept())
                 page.get_by_role('button', name='Delete conversation', exact=True).click()
                 expect(page.locator('.chat-assistant')).to_have_count(0, timeout=15000)

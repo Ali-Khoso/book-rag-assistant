@@ -28,6 +28,7 @@ The application processes an uploaded PDF, extracts text and page metadata, divi
 - Text extraction that preserves page numbers and document metadata
 - Chunking, embedding, and semantic retrieval
 - Answers grounded in retrieved passages
+- Short [cited book overviews](docs/BOOK_OVERVIEWS.md) from sampled passages, with an explicit coverage note
 - Page citations and expandable source excerpts
 - A clear “not found in the uploaded book” response when evidence is insufficient
 - Private document library with delete controls
