@@ -4,6 +4,7 @@ import re
 
 from app.answers.grounding import content_words, insufficient, metadata_answer, metadata_intent, validate_answer
 from app.answers.llm import ModelUnavailable
+from app.answers.overview import overview_evidence, overview_intent, overview_scope
 from app.processing.errors import ProcessingError
 from app.processing.metadata import read_pdf_metadata
 
@@ -58,13 +59,16 @@ class AnswerService:
                 if book.get('embedding_model') != self.embeddings.model_id:
                     raise ChatConflict('Reprocess this book before asking questions with the current search model.')
                 history, _ = self.chats.message_page(str(claim['conversation_id']), limit=self.config.conversation_history_turns * 2)
-                context_history = history if question_needs_history(request.question) else []
+                is_overview = overview_intent(request.question)
+                context_history = history if not is_overview and question_needs_history(request.question) else []
                 evidence = self._evidence(owner, book, request, context_history, fields)
                 if not evidence:
                     result = insufficient()
                 else:
                     generated = self.language_model.generate(request.question, evidence, context_history)
                     result = validate_answer(generated, evidence)
+                    if is_overview and result.payload['status'] == 'answered':
+                        result.payload['scope_note'] = overview_scope(evidence)
             return self.chats.finish(owner, book['id'], request_id, result.payload, result.sources)
         except Exception:
             try:
@@ -74,7 +78,10 @@ class AnswerService:
             raise
 
     def _evidence(self, owner: str, book: dict, request, history: list[dict], fields: list[str]) -> list[dict]:
-        """Identity questions inspect opening pages; other questions use semantic search."""
+        """Identity uses opening pages, overviews span the book, and topics use search."""
+        if not fields and overview_intent(request.question):
+            return overview_evidence(self.books.overview_passages(owner, book), book,
+                limit=min(request.top_k, self.config.answer_retrieval_k), budget=self.config.answer_context_chars)
         query = request.question
         if not fields and history and question_needs_history(query):
             prior = next((row['content'] for row in reversed(history) if row['role'] == 'user'), '')

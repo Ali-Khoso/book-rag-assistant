@@ -14,6 +14,7 @@ export type Answer = {
   status: "answered" | "insufficient_evidence";
   method: "metadata" | "model";
   content: string;
+  scope_note?: string | null;
   statements: { text: string; citation_ranks: number[] }[];
   citations: Citation[];
 };

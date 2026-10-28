@@ -23,6 +23,7 @@ function AssistantMessage({ message }: { message: ChatMessage }) {
   }
   return <article className={`chat-message chat-assistant${answer?.status === "insufficient_evidence" ? " chat-insufficient" : ""}`}>
     <p className="chat-speaker">Bookwise {answer?.status === "insufficient_evidence" && <span>· More evidence needed</span>}</p>
+    {answer?.scope_note && <p className="search-hint" role="note">{answer.scope_note}</p>}
     {answer?.statements.length ? answer.statements.map((statement, index) => <p className="chat-answer-text" key={index}>{statement.text} {statement.citation_ranks.map((rank) => <button className="citation-link" key={rank} onClick={() => openSource(rank)} aria-label={`Open source ${rank}`}>[{rank}]</button>)}</p>) : <p className="chat-answer-text">{message.content}</p>}
     {!!answer?.citations.length && <div className="chat-sources" aria-label="Answer sources"><p className="chat-source-heading">Check the sources</p>{answer.citations.map((source) => <details className="chat-source" id={`source-${message.id}-${source.rank}`} key={source.rank}>
       <summary><span className="source-rank">{source.rank}</span><span>{sourceLabel(source)}</span><span className="source-filename">{source.filename}</span></summary>

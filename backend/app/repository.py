@@ -41,6 +41,20 @@ class SupabaseRepository:
             .eq("document_id", document["id"]).eq("user_id", document["user_id"])\
             .eq("processing_run_id", document["processing_run_id"]).order("chunk_index").limit(limit).execute().data or []
 
+    def overview_passages(self, owner: str, document: dict) -> list[dict]:
+        """Sample only the selected owner's current index; no vector query needed."""
+        from app.answers.overview import overview_indices
+        if document['user_id'] != owner:
+            raise ValueError('Book ownership mismatch')
+        positions = overview_indices(document.get('chunk_count', 0))
+        if not positions:
+            return []
+        return self.client.table('chunks').select(
+            'id,document_id,user_id,processing_run_id,content,page_start,page_end,chunk_index')\
+            .eq('document_id', document['id']).eq('user_id', owner)\
+            .eq('processing_run_id', document['processing_run_id']).in_('chunk_index', positions)\
+            .order('chunk_index').limit(len(positions)).execute().data or []
+
     def create_document(self, owner: str, filename: str, content: bytes) -> dict:
         """Store a private upload and its queued row; remove orphan files on failure."""
         document_id = str(uuid4())

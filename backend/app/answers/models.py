@@ -53,6 +53,7 @@ class AnswerPayload(BaseModel):
     status: Literal["answered", "insufficient_evidence"]
     method: Literal["metadata", "model"]
     content: str
+    scope_note: str | None = None
     statements: list[AnswerStatement]
     citations: list[CitationSnapshot] = Field(default_factory=list)
 
