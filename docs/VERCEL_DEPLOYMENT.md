@@ -110,6 +110,19 @@ Then sign in through Vercel, upload a text-based PDF, wait for **Ready**, ask a 
 
 The code and local checks can be completed before hosting is configured. An online deployment is verified only after these checks pass against the actual Vercel and backend URLs.
 
+### Troubleshoot backend readiness
+
+If `/api/live` succeeds but `/api/ready` returns HTTP 503, the API process is running but a required dependency is not ready. Inspect the readiness response and the backend or worker logs to identify the failing check:
+
+| Check | What to verify |
+| --- | --- |
+| `database` | The backend can reach the production Supabase project with its server credentials, and migrations 0001 through 0005 have been applied. |
+| `worker` | The separate worker is running against the same Supabase project and is publishing a fresh heartbeat. |
+| `embeddings` | The API can load its configured embedding model; inspect model download, cache access, and startup errors. |
+| `answers` | For Ollama, its private endpoint must be reachable from the API and its model list must include the configured `LLM_MODEL`. |
+
+For the hosted answer provider, readiness checks whether a key is configured; it does not make a paid generation request or verify the key with the provider. After readiness passes, ask a real question through the deployed app to verify answer generation as well as retrieval and citations.
+
 ## References
 
 - [Vercel generated domains](https://vercel.com/docs/domains/working-with-domains)
