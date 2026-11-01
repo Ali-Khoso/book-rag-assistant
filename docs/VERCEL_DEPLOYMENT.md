@@ -43,6 +43,19 @@ Only the URL and publishable key belong in Vercel's public variables. Keep `SUPA
 
 ## Backend requirements
 
+### Match the frontend and backend settings
+
+Use this cross-check when filling in the two hosting environments:
+
+| Setting | Must match |
+| --- | --- |
+| Frontend `NEXT_PUBLIC_SUPABASE_URL` | Backend `SUPABASE_URL`; both must use the same production Supabase project. |
+| Frontend `NEXT_PUBLIC_API_URL` | The API's public HTTPS origin, without `/api`; the frontend adds each API route. |
+| Backend `FRONTEND_ORIGIN` | The stable frontend production origin, including `https://`, with no page path. |
+| Backend `ALLOWED_HOSTS` | The hostname from `NEXT_PUBLIC_API_URL`, without its scheme or path. |
+
+For example, if the API origin is `https://api.example.com`, use that full value for `NEXT_PUBLIC_API_URL` and include `api.example.com` in `ALLOWED_HOSTS`. The Vercel frontend hostname belongs in `FRONTEND_ORIGIN`, not in place of the backend hostname in `ALLOWED_HOSTS`.
+
 Use a backend host that supports the services below. A provider-generated HTTPS address is sufficient; you do not need to buy a custom domain. No backend hosting account is created or billed by this repository.
 
 | Service | Image/start command | Required behavior |
